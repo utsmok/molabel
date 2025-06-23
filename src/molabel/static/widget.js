@@ -232,10 +232,11 @@ function render({ model, el }) {
     // Remove feedback class after animation
     setTimeout(() => {
       button.classList.remove(feedbackClass);
-    }, 800);
+    }, 300);
     
-    // Add annotation
-    const newAnnotations = [...annotations, annotation];
+    // Replace existing annotation for this index or add new one
+    const newAnnotations = annotations.filter(ann => ann.index !== currentIndex);
+    newAnnotations.push(annotation);
     model.set('annotations', newAnnotations);
     
     // Move to next example (even if it's past the end)
@@ -253,7 +254,7 @@ function render({ model, el }) {
       // Remove feedback class after animation
       setTimeout(() => {
         prevBtn.classList.remove('prev-feedback');
-      }, 800);
+      }, 300);
       
       model.set('current_index', currentIndex - 1);
       model.save_changes();

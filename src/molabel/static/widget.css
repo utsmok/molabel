@@ -217,21 +217,21 @@
 
 .molabel-btn.success-feedback {
     --feedback-color: rgba(40, 167, 69, 0.6);
-    animation: button-flash 0.8s ease-out;
+    animation: button-flash 0.3s ease-out;
 }
 
 .molabel-btn.error-feedback {
     --feedback-color: rgba(220, 53, 69, 0.6);
-    animation: button-flash 0.8s ease-out;
+    animation: button-flash 0.3s ease-out;
 }
 
 .molabel-btn.skip-feedback {
     --feedback-color: rgba(255, 193, 7, 0.6);
-    animation: button-flash 0.8s ease-out;
+    animation: button-flash 0.3s ease-out;
 }
 
 .molabel-btn.prev-feedback {
     --feedback-color: rgba(108, 117, 125, 0.6);
-    animation: button-flash 0.8s ease-out;
+    animation: button-flash 0.3s ease-out;
 }
 
