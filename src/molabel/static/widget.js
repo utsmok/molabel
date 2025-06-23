@@ -181,7 +181,6 @@ function render({ model, el }) {
                 <th>Action</th>
                 <th>Keyboard</th>
                 <th>Gamepad</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>`;
@@ -198,24 +197,18 @@ function render({ model, el }) {
         const keyboardKey = Object.keys(shortcuts).find(key => shortcuts[key] === action) || '';
         const gamepadKey = Object.keys(gamepadShortcuts || {}).find(key => gamepadShortcuts[key] === action) || '';
         
-        // Determine status based on action type
-        let status = '✓';
-        if (action === 'speech_notes') {
-          status = speechAvailable ? '✓' : '❌';
-        }
-        
         shortcutsText += `
           <tr>
             <td class="action-name">${action}</td>
             <td>${keyboardKey ? `<span class="shortcut-key">${keyboardKey}</span>` : '-'}</td>
             <td>${gamepadKey ? `<span class="shortcut-key">${gamepadKey}</span>` : '-'}</td>
-            <td>${status}</td>
           </tr>`;
       });
       
       shortcutsText += `
             </tbody>
           </table>
+          ${gamepadConnected && lastGamepadEvent ? `<div class="gamepad-activity">Last gamepad activity: ${lastGamepadEvent}</div>` : ''}
         </details>`;
     }
     

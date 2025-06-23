@@ -14,7 +14,7 @@ A simple annotation widget for labeling examples with speech recognition support
 ## Installation
 
 ```bash
-pip install -e .
+uv pip install molabel
 ```
 
 ## Usage
