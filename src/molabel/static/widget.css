@@ -1,0 +1,220 @@
+.molabel-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.molabel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.molabel-status {
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.molabel-settings-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.molabel-settings-btn:hover {
+    background-color: #f8f9fa;
+}
+
+.molabel-progress-container {
+    margin-bottom: 1rem;
+}
+
+.molabel-progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.molabel-progress-fill {
+    height: 100%;
+    background-color: #28a745;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.molabel-example {
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    min-height: 150px;
+    overflow-x: auto;
+}
+
+.molabel-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.molabel-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    flex: 1;
+    min-width: 80px;
+}
+
+.molabel-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.molabel-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.molabel-btn-prev {
+    background: #6c757d;
+    color: white;
+}
+
+.molabel-btn-prev:hover:not(:disabled) {
+    background: #5a6268;
+}
+
+.molabel-btn-yes {
+    background: #28a745;
+    color: white;
+}
+
+.molabel-btn-yes:hover:not(:disabled) {
+    background: #218838;
+}
+
+.molabel-btn-no {
+    background: #dc3545;
+    color: white;
+}
+
+.molabel-btn-no:hover:not(:disabled) {
+    background: #c82333;
+}
+
+.molabel-btn-skip {
+    background: #ffc107;
+    color: #212529;
+}
+
+.molabel-btn-skip:hover:not(:disabled) {
+    background: #e0a800;
+}
+
+.molabel-notes-container {
+    margin-bottom: 1rem;
+}
+
+.molabel-notes-container label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.molabel-notes {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-family: inherit;
+    resize: vertical;
+    font-size: 0.9rem;
+}
+
+.molabel-notes:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.molabel-shortcuts {
+    margin-top: 1rem;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+/* Modal Styles */
+.molabel-modal {
+    display: none;
+    position: fixed;
+    z-index: 2147483647;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.molabel-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    position: relative;
+    z-index: 2147483647;
+}
+
+.molabel-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.molabel-modal-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.molabel-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    color: #6c757d;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.molabel-modal-close:hover {
+    color: #dc3545;
+}
+
+.molabel-modal-body {
+    padding: 1rem;
+}
