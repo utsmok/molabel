@@ -45,13 +45,28 @@ function render({ model, el }) {
   // Create notes field
   const notesContainer = document.createElement('div');
   notesContainer.className = 'molabel-notes-container';
+  
+  const notesLabelContainer = document.createElement('div');
+  notesLabelContainer.className = 'molabel-notes-label-container';
+  
   const notesLabel = document.createElement('label');
   notesLabel.textContent = 'Notes:';
+  
+  const micButton = document.createElement('button');
+  micButton.className = 'molabel-mic-btn';
+  micButton.innerHTML = '🎤';
+  micButton.title = 'Click to record speech or hold Alt+6';
+  micButton.type = 'button';
+  
+  notesLabelContainer.appendChild(notesLabel);
+  notesLabelContainer.appendChild(micButton);
+  
   const notesField = document.createElement('textarea');
   notesField.className = 'molabel-notes';
   notesField.rows = 3;
   notesField.placeholder = 'Add any notes about this example...';
-  notesContainer.appendChild(notesLabel);
+  
+  notesContainer.appendChild(notesLabelContainer);
   notesContainer.appendChild(notesField);
   
   // Create progress bar
@@ -79,6 +94,14 @@ function render({ model, el }) {
   let gamepadIndex = -1;
   let currentlyPressedButtons = new Set(); // Track all currently pressed buttons
   
+  // Speech recognition variables
+  let speechRecognition = null;
+  let speechAvailable = false;
+  let isRecording = false;
+  let speechKeyPressed = false;
+  let speechGamepadPressed = false;
+  let originalNotesText = ''; // Store original text before speech session
+  
   
   // Assemble the widget
   container.appendChild(header);
@@ -100,6 +123,7 @@ function render({ model, el }) {
   
   // Update display function
   function updateDisplay() {
+    console.log('🔄 updateDisplay called');
     const examples = model.get('examples');
     const currentIndex = model.get('current_index');
     const showNotes = model.get('notes');
@@ -125,7 +149,15 @@ function render({ model, el }) {
     // Update notes field with existing annotation if available
     const annotations = model.get('annotations');
     const existingAnnotation = annotations.find(ann => ann.index === currentIndex);
-    notesField.value = existingAnnotation ? existingAnnotation._notes || '' : '';
+    const newNotesValue = existingAnnotation ? existingAnnotation._notes || '' : '';
+    
+    // Only update notes field if we're not currently recording speech
+    if (!isRecording) {
+      notesField.value = newNotesValue;
+      console.log('📝 updateDisplay set notes field to:', newNotesValue);
+    } else {
+      console.log('🚫 updateDisplay skipped notes update because currently recording speech');
+    }
     
     // Show/hide notes
     notesContainer.style.display = showNotes ? 'block' : 'none';
@@ -150,6 +182,7 @@ function render({ model, el }) {
                 <th>Action</th>
                 <th>Keyboard</th>
                 <th>Gamepad</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>`;
@@ -159,18 +192,25 @@ function render({ model, el }) {
       Object.values(shortcuts).forEach(action => allActions.add(action));
       Object.values(gamepadShortcuts || {}).forEach(action => allActions.add(action));
       
-      const actionOrder = ['prev', 'yes', 'no', 'skip', 'focus_notes'];
+      const actionOrder = ['prev', 'yes', 'no', 'skip', 'focus_notes', 'speech_notes'];
       const sortedActions = actionOrder.filter(action => allActions.has(action));
       
       sortedActions.forEach(action => {
         const keyboardKey = Object.keys(shortcuts).find(key => shortcuts[key] === action) || '';
         const gamepadKey = Object.keys(gamepadShortcuts || {}).find(key => gamepadShortcuts[key] === action) || '';
         
+        // Determine status based on action type
+        let status = '✓';
+        if (action === 'speech_notes') {
+          status = speechAvailable ? '✓' : '❌';
+        }
+        
         shortcutsText += `
           <tr>
             <td class="action-name">${action}</td>
             <td>${keyboardKey ? `<span class="shortcut-key">${keyboardKey}</span>` : '-'}</td>
             <td>${gamepadKey ? `<span class="shortcut-key">${gamepadKey}</span>` : '-'}</td>
+            <td>${status}</td>
           </tr>`;
       });
       
@@ -267,6 +307,18 @@ function render({ model, el }) {
   noBtn.addEventListener('click', () => annotate('no'));
   skipBtn.addEventListener('click', () => annotate('skip'));
   
+  // Microphone button event listener
+  micButton.addEventListener('click', () => {
+    console.log('🎤 Microphone button clicked - isRecording:', isRecording);
+    if (isRecording) {
+      console.log('🎤 Button click stopping recording');
+      stopSpeechRecognition();
+    } else {
+      console.log('🎤 Button click starting recording');
+      startSpeechRecognition();
+    }
+  });
+  
   
   // Helper function to parse keyboard shortcuts with modifiers
   function parseShortcut(event) {
@@ -310,6 +362,13 @@ function render({ model, el }) {
       case 'focus_notes':
         notesField.focus();
         break;
+      case 'speech_notes':
+        if (isRecording) {
+          stopSpeechRecognition();
+        } else {
+          startSpeechRecognition();
+        }
+        break;
     }
   }
   
@@ -318,16 +377,35 @@ function render({ model, el }) {
     const shortcuts = model.get('shortcuts');
     const shortcutString = parseShortcut(e);
     
-      // Debug logs hidden
-    // console.log('Key pressed:', shortcutString, 'event.key:', e.key, 'event.code:', e.code);
-    // console.log('Available shortcuts:', shortcuts);
-    // console.log('Looking for shortcut:', shortcutString, 'Found:', shortcuts[shortcutString]);
+    // Handle speech push-to-talk
+    if (shortcuts[shortcutString] === 'speech_notes' && !speechKeyPressed) {
+      console.log('🎹 Keyboard speech key pressed - starting recording');
+      speechKeyPressed = true;
+      startSpeechRecognition();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     
     if (shortcuts[shortcutString]) {
       // console.log('Executing action:', shortcuts[shortcutString]);
       e.preventDefault();
       e.stopPropagation();
       handleAction(shortcuts[shortcutString]);
+    }
+  });
+  
+  container.addEventListener('keyup', (e) => {
+    const shortcuts = model.get('shortcuts');
+    const shortcutString = parseShortcut(e);
+    
+    // Handle speech push-to-talk release
+    if (shortcuts[shortcutString] === 'speech_notes' && speechKeyPressed) {
+      console.log('🎹 Keyboard speech key released - stopping recording');
+      speechKeyPressed = false;
+      stopSpeechRecognition();
+      e.preventDefault();
+      e.stopPropagation();
     }
   });
   
@@ -346,6 +424,148 @@ function render({ model, el }) {
   model.on('change:notes', updateDisplay);
   model.on('change:shortcuts', updateDisplay);
   model.on('change:gamepad_shortcuts', updateDisplay);
+  
+  // Initialize speech recognition
+  function initSpeechRecognition() {
+    console.log('🔧 Initializing speech recognition...');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      console.log('✅ Speech Recognition API found');
+      speechRecognition = new SpeechRecognition();
+      speechRecognition.continuous = true;
+      speechRecognition.interimResults = true;
+      speechRecognition.lang = 'en-US';
+      
+      speechRecognition.onstart = () => {
+        console.log('🎤 Speech recognition started');
+        isRecording = true;
+        originalNotesText = notesField.value; // Store original text
+        console.log('📝 Original notes text stored:', originalNotesText);
+        updateRecordingUI();
+      };
+      
+      speechRecognition.onresult = (event) => {
+        console.log('📢 Speech result event - resultIndex:', event.resultIndex, 'total results:', event.results.length);
+        let newFinalTranscript = '';
+        let newInterimTranscript = '';
+        
+        // Only process NEW results from resultIndex onwards (prevents duplication)
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          const isFinal = event.results[i].isFinal;
+          console.log(`  Result ${i}: "${transcript}" (final: ${isFinal})`);
+          
+          if (isFinal) {
+            newFinalTranscript += transcript;
+          } else {
+            newInterimTranscript += transcript;
+          }
+        }
+        
+        console.log('✅ New final transcript:', newFinalTranscript);
+        console.log('⏳ New interim transcript:', newInterimTranscript);
+        
+        // Add any new final text to our stored text
+        if (newFinalTranscript) {
+          const oldStoredText = originalNotesText;
+          const separator = originalNotesText ? ' ' : '';
+          originalNotesText = originalNotesText + separator + newFinalTranscript;
+          console.log('💾 Updated stored text from:', oldStoredText, 'to:', originalNotesText);
+        }
+        
+        // Show live results: stored final text + current interim text
+        if (newInterimTranscript) {
+          const separator = originalNotesText ? ' ' : '';
+          const displayText = originalNotesText + separator + newInterimTranscript;
+          console.log('👁️ Showing live text:', displayText);
+          notesField.value = displayText;
+          console.log('🔍 After setting value, notesField.value is now:', notesField.value);
+        } else {
+          // No interim text, just show the stored final text
+          console.log('📋 Showing final text only:', originalNotesText);
+          notesField.value = originalNotesText;
+          console.log('🔍 After setting final value, notesField.value is now:', notesField.value);
+        }
+      };
+      
+      speechRecognition.onend = () => {
+        console.log('🛑 Speech recognition ended. Final stored text:', originalNotesText);
+        isRecording = false;
+        // Ensure final text is preserved
+        notesField.value = originalNotesText;
+        console.log('📝 Set notes field to final text on end');
+        updateRecordingUI();
+      };
+      
+      speechRecognition.onerror = (event) => {
+        console.log('❌ Speech recognition error:', event.error);
+        isRecording = false;
+        // Preserve text even on error
+        notesField.value = originalNotesText;
+        console.log('📝 Set notes field to stored text on error');
+        updateRecordingUI();
+      };
+      
+      speechAvailable = true;
+      console.log('🎉 Speech recognition fully initialized and available');
+    } else {
+      console.log('❌ Speech recognition not available in this browser');
+      speechAvailable = false;
+    }
+    
+    updateMicButtonState();
+  }
+  
+  function updateRecordingUI() {
+    if (isRecording) {
+      micButton.classList.add('recording');
+      notesField.classList.add('recording');
+      micButton.innerHTML = '🔴';
+      micButton.title = 'Recording... (release to stop)';
+    } else {
+      micButton.classList.remove('recording');
+      notesField.classList.remove('recording');
+      micButton.innerHTML = speechAvailable ? '🎤' : '❌';
+      micButton.title = speechAvailable ? 'Click to record speech or hold Alt+6' : 'Speech recognition not available';
+    }
+  }
+  
+  function updateMicButtonState() {
+    micButton.disabled = !speechAvailable;
+    updateRecordingUI();
+  }
+  
+  function startSpeechRecognition() {
+    console.log('🚀 startSpeechRecognition called - speechAvailable:', speechAvailable, 'isRecording:', isRecording);
+    if (speechAvailable && !isRecording) {
+      try {
+        console.log('▶️ Calling speechRecognition.start()');
+        speechRecognition.start();
+      } catch (error) {
+        console.log('💥 Error starting speech recognition:', error);
+      }
+    } else {
+      console.log('⚠️ Cannot start - speechAvailable:', speechAvailable, 'isRecording:', isRecording);
+    }
+  }
+  
+  function stopSpeechRecognition() {
+    console.log('🛑 stopSpeechRecognition called - speechAvailable:', speechAvailable, 'isRecording:', isRecording);
+    if (speechAvailable && isRecording) {
+      try {
+        console.log('⏹️ Calling speechRecognition.stop()');
+        speechRecognition.stop();
+      } catch (error) {
+        console.log('💥 Error stopping speech recognition:', error);
+      }
+    } else {
+      console.log('⚠️ Cannot stop - speechAvailable:', speechAvailable, 'isRecording:', isRecording);
+    }
+  }
+  
+  // Initialize speech recognition
+  initSpeechRecognition();
   
   // Initial display
   updateDisplay();
@@ -416,8 +636,26 @@ function render({ model, el }) {
           // Check for mapped gamepad actions
           const gamepadShortcuts = model.get('gamepad_shortcuts');
           if (gamepadShortcuts[buttonKey]) {
-            // console.log(`Executing gamepad action: ${gamepadShortcuts[buttonKey]}`);
-            handleAction(gamepadShortcuts[buttonKey]);
+            // Handle speech push-to-talk
+            if (gamepadShortcuts[buttonKey] === 'speech_notes') {
+              console.log('🎮 Gamepad speech button pressed - starting recording');
+              speechGamepadPressed = true;
+              startSpeechRecognition();
+            } else {
+              // console.log(`Executing gamepad action: ${gamepadShortcuts[buttonKey]}`);
+              handleAction(gamepadShortcuts[buttonKey]);
+            }
+          }
+        }
+        
+        // Detect button release (transition from pressed to not pressed)
+        if (!isPressed && wasPressed) {
+          // Check for speech push-to-talk release
+          const gamepadShortcuts = model.get('gamepad_shortcuts');
+          if (gamepadShortcuts[buttonKey] === 'speech_notes' && speechGamepadPressed) {
+            console.log('🎮 Gamepad speech button released - stopping recording');
+            speechGamepadPressed = false;
+            stopSpeechRecognition();
           }
         }
         
@@ -440,8 +678,7 @@ function render({ model, el }) {
         lastButtonStates[axisKey] = currentValue;
       });
       
-      // Update display whenever button states change
-      updateDisplay();
+      // No need to update display here - gamepad actions handle their own updates
     }
     
     // Continue polling

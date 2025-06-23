@@ -30,7 +30,8 @@ class SimpleLabel(anywidget.AnyWidget):
             "Alt+2": "yes", 
             "Alt+3": "no",
             "Alt+4": "skip",
-            "Alt+5": "focus_notes"
+            "Alt+5": "focus_notes",
+            "Alt+6": "speech_notes"
         }
         
         # Default gamepad shortcuts
@@ -40,6 +41,7 @@ class SimpleLabel(anywidget.AnyWidget):
             "button_2": "skip",    # Often X button
             "button_3": "prev",    # Often Y button
             "button_4": "focus_notes",  # Often left bumper
+            "button_5": "speech_notes",  # Often right bumper
         }
         
         # Use provided shortcuts or defaults
