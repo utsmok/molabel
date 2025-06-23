@@ -12,12 +12,13 @@ class SimpleLabel(anywidget.AnyWidget):
     examples = traitlets.List([]).tag(sync=True)
     notes = traitlets.Bool(True).tag(sync=True)
     shortcuts = traitlets.Dict({}).tag(sync=True)
+    gamepad_shortcuts = traitlets.Dict({}).tag(sync=True)
     
     # Current state
     current_index = traitlets.Int(0).tag(sync=True)
     annotations = traitlets.List([]).tag(sync=True)
     
-    def __init__(self, examples, render, notes=True, shortcuts=None):
+    def __init__(self, examples, render, notes=True, shortcuts=None, gamepad_shortcuts=None):
         super().__init__()
         self.render = render
         self.examples = [{**ex, "_html": self.render(ex)} for ex in examples]
@@ -32,8 +33,18 @@ class SimpleLabel(anywidget.AnyWidget):
             "Alt+5": "focus_notes"
         }
         
+        # Default gamepad shortcuts
+        default_gamepad_shortcuts = {
+            "button_0": "yes",     # Often A button
+            "button_1": "no",      # Often B button  
+            "button_2": "skip",    # Often X button
+            "button_3": "prev",    # Often Y button
+            "button_4": "focus_notes",  # Often left bumper
+        }
+        
         # Use provided shortcuts or defaults
         self.shortcuts = shortcuts if shortcuts is not None else default_shortcuts
+        self.gamepad_shortcuts = gamepad_shortcuts if gamepad_shortcuts is not None else default_gamepad_shortcuts
 
     def get_annotations(self):
         """Return the collected annotations"""

@@ -11,14 +11,7 @@ function render({ model, el }) {
   const status = document.createElement('div');
   status.className = 'molabel-status';
   
-  // Create settings button
-  const settingsBtn = document.createElement('button');
-  settingsBtn.className = 'molabel-settings-btn';
-  settingsBtn.innerHTML = '⚙️';
-  settingsBtn.title = 'Settings';
-  
   header.appendChild(status);
-  header.appendChild(settingsBtn);
   
   // Create example display
   const exampleContainer = document.createElement('div');
@@ -75,179 +68,17 @@ function render({ model, el }) {
   const shortcutsInfo = document.createElement('div');
   shortcutsInfo.className = 'molabel-shortcuts';
   
-  // Create modal
-  const modal = document.createElement('div');
-  modal.className = 'molabel-modal';
-  modal.style.display = 'none';
+  // Create gamepad display
+  const gamepadInfo = document.createElement('div');
+  gamepadInfo.className = 'molabel-gamepad';
+  gamepadInfo.style.display = 'none'; // Hidden by default
   
-  const modalContent = document.createElement('div');
-  modalContent.className = 'molabel-modal-content';
+  // Gamepad state variables (declare early)
+  let gamepadConnected = false;
+  let lastGamepadEvent = '';
+  let gamepadIndex = -1;
+  let currentlyPressedButtons = new Set(); // Track all currently pressed buttons
   
-  const modalHeader = document.createElement('div');
-  modalHeader.className = 'molabel-modal-header';
-  modalHeader.innerHTML = '<h3>Settings</h3>';
-  
-  const modalCloseBtn = document.createElement('button');
-  modalCloseBtn.className = 'molabel-modal-close';
-  modalCloseBtn.innerHTML = '×';
-  modalHeader.appendChild(modalCloseBtn);
-  
-  const modalBody = document.createElement('div');
-  modalBody.className = 'molabel-modal-body';
-  
-  // Create shortcuts display section
-  const shortcutsSection = document.createElement('div');
-  shortcutsSection.innerHTML = '<h4>Keyboard Shortcuts</h4>';
-  
-  const shortcutsList = document.createElement('div');
-  shortcutsList.className = 'molabel-shortcuts-list';
-  
-  // Store for managing shortcut edits
-  let tempShortcuts = {};
-  
-  function updateModalShortcuts() {
-    const shortcuts = model.get('shortcuts');
-    tempShortcuts = {...shortcuts}; // Copy for editing
-    
-    const actionLabels = {
-      'prev': 'Previous',
-      'yes': 'Yes',
-      'no': 'No', 
-      'skip': 'Skip',
-      'focus_notes': 'Focus Notes'
-    };
-    
-    const actions = ['prev', 'yes', 'no', 'skip', 'focus_notes'];
-    shortcutsList.innerHTML = '';
-    
-    actions.forEach(action => {
-      // Find current shortcut for this action
-      const currentShortcut = Object.keys(tempShortcuts).find(key => tempShortcuts[key] === action) || '';
-      
-      // Parse current shortcut to extract modifiers and key
-      const parts = currentShortcut.split('+');
-      const currentModifiers = parts.slice(0, -1);
-      const currentKey = parts[parts.length - 1] || '';
-      
-      const shortcutItem = document.createElement('div');
-      shortcutItem.className = 'molabel-shortcut-row';
-      
-      const actionLabel = document.createElement('span');
-      actionLabel.className = 'molabel-shortcut-action';
-      actionLabel.textContent = actionLabels[action];
-      
-      // Create modifier checkboxes
-      const modifiersContainer = document.createElement('div');
-      modifiersContainer.className = 'molabel-modifiers';
-      
-      ['Ctrl', 'Alt', 'Shift'].forEach(modifier => {
-        const label = document.createElement('label');
-        label.className = 'molabel-modifier-label';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = currentModifiers.includes(modifier);
-        checkbox.dataset.modifier = modifier;
-        checkbox.dataset.action = action;
-        
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(modifier));
-        modifiersContainer.appendChild(label);
-      });
-      
-      // Add "+" symbol
-      const plusSpan = document.createElement('span');
-      plusSpan.textContent = '+';
-      plusSpan.className = 'molabel-plus';
-      
-      // Create key dropdown
-      const keySelect = document.createElement('select');
-      keySelect.className = 'molabel-key-select';
-      keySelect.dataset.action = action;
-      
-      // Common keys
-      const keys = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 
-                   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-                   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-                   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Enter'];
-      
-      keys.forEach(key => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = key || '(none)';
-        if (key === currentKey) option.selected = true;
-        keySelect.appendChild(option);
-      });
-      
-      // Create preview span
-      const preview = document.createElement('span');
-      preview.className = 'molabel-shortcut-preview';
-      
-      function updateShortcut() {
-        const modifiers = [];
-        shortcutItem.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-          modifiers.push(cb.dataset.modifier);
-        });
-        
-        const key = keySelect.value;
-        
-        // Remove old mapping for this action
-        Object.keys(tempShortcuts).forEach(shortcutKey => {
-          if (tempShortcuts[shortcutKey] === action) {
-            delete tempShortcuts[shortcutKey];
-          }
-        });
-        
-        // Create new shortcut string
-        let shortcutString = '';
-        if (modifiers.length > 0 && key) {
-          shortcutString = modifiers.join('+') + '+' + key;
-        } else if (key) {
-          shortcutString = key;
-        }
-        
-        // Update preview to show the actual shortcut format
-        if (shortcutString) {
-          preview.textContent = shortcutString;
-        } else if (key && modifiers.length === 0) {
-          preview.textContent = key;
-        } else {
-          preview.textContent = '(none)';
-        }
-        
-        // Add to temp shortcuts and immediately update model
-        if (shortcutString) {
-          tempShortcuts[shortcutString] = action;
-        }
-        
-        // Apply changes immediately
-        model.set('shortcuts', {...tempShortcuts});
-        model.save_changes();
-      }
-      
-      // Add event listeners
-      modifiersContainer.addEventListener('change', updateShortcut);
-      keySelect.addEventListener('change', updateShortcut);
-      
-      shortcutItem.appendChild(actionLabel);
-      shortcutItem.appendChild(modifiersContainer);
-      shortcutItem.appendChild(plusSpan);
-      shortcutItem.appendChild(keySelect);
-      shortcutItem.appendChild(preview);
-      shortcutsList.appendChild(shortcutItem);
-      
-      // Initial update - call after DOM is assembled
-      updateShortcut();
-    });
-  }
-  
-  shortcutsSection.appendChild(shortcutsList);
-  
-  modalBody.appendChild(shortcutsSection);
-  
-  modalContent.appendChild(modalHeader);
-  modalContent.appendChild(modalBody);
-  modal.appendChild(modalContent);
   
   // Assemble the widget
   container.appendChild(header);
@@ -257,7 +88,6 @@ function render({ model, el }) {
   container.appendChild(notesContainer);
   container.appendChild(shortcutsInfo);
   el.appendChild(container);
-  el.appendChild(modal);
   
   // Helper function to render examples
   function renderExample(example) {
@@ -304,13 +134,53 @@ function render({ model, el }) {
     const progress = examples.length > 0 ? (currentIndex / examples.length) * 100 : 0;
     progressFill.style.width = `${progress}%`;
     
-    // Update shortcuts display
-    const shortcutsList = Object.entries(shortcuts)
-      .map(([key, action]) => `${key}: ${action}`)
-      .join(', ');
-    shortcutsInfo.innerHTML = shortcuts && Object.keys(shortcuts).length > 0
-      ? `<strong>Keyboard shortcuts:</strong> ${shortcutsList}`
-      : '';
+    // Shortcuts display with table
+    const gamepadShortcuts = model.get('gamepad_shortcuts');
+    const hasShortcuts = (shortcuts && Object.keys(shortcuts).length > 0) || 
+                        (gamepadShortcuts && Object.keys(gamepadShortcuts).length > 0);
+    
+    let shortcutsText = '';
+    if (hasShortcuts) {
+      shortcutsText = `
+        <details class="shortcuts-details">
+          <summary>Shortcuts</summary>
+          <table class="shortcuts-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Keyboard</th>
+                <th>Gamepad</th>
+              </tr>
+            </thead>
+            <tbody>`;
+      
+      // Create unified action list
+      const allActions = new Set();
+      Object.values(shortcuts).forEach(action => allActions.add(action));
+      Object.values(gamepadShortcuts || {}).forEach(action => allActions.add(action));
+      
+      const actionOrder = ['prev', 'yes', 'no', 'skip', 'focus_notes'];
+      const sortedActions = actionOrder.filter(action => allActions.has(action));
+      
+      sortedActions.forEach(action => {
+        const keyboardKey = Object.keys(shortcuts).find(key => shortcuts[key] === action) || '';
+        const gamepadKey = Object.keys(gamepadShortcuts || {}).find(key => gamepadShortcuts[key] === action) || '';
+        
+        shortcutsText += `
+          <tr>
+            <td class="action-name">${action}</td>
+            <td>${keyboardKey ? `<span class="shortcut-key">${keyboardKey}</span>` : '-'}</td>
+            <td>${gamepadKey ? `<span class="shortcut-key">${gamepadKey}</span>` : '-'}</td>
+          </tr>`;
+      });
+      
+      shortcutsText += `
+            </tbody>
+          </table>
+        </details>`;
+    }
+    
+    shortcutsInfo.innerHTML = shortcutsText;
     
     // Disable/enable buttons
     prevBtn.disabled = currentIndex === 0;
@@ -348,6 +218,22 @@ function render({ model, el }) {
       _timestamp: new Date().toISOString()
     };
     
+    // Add visual feedback to buttons
+    const feedbackClass = label === 'yes' ? 'success-feedback' : 
+                         label === 'no' ? 'error-feedback' : 
+                         'skip-feedback';
+    
+    const button = label === 'yes' ? yesBtn : 
+                  label === 'no' ? noBtn : 
+                  skipBtn;
+                  
+    button.classList.add(feedbackClass);
+    
+    // Remove feedback class after animation
+    setTimeout(() => {
+      button.classList.remove(feedbackClass);
+    }, 800);
+    
     // Add annotation
     const newAnnotations = [...annotations, annotation];
     model.set('annotations', newAnnotations);
@@ -361,6 +247,14 @@ function render({ model, el }) {
   function navigate(direction) {
     const currentIndex = model.get('current_index');
     if (direction === 'prev' && currentIndex > 0) {
+      // Add visual feedback to previous button
+      prevBtn.classList.add('prev-feedback');
+      
+      // Remove feedback class after animation
+      setTimeout(() => {
+        prevBtn.classList.remove('prev-feedback');
+      }, 800);
+      
       model.set('current_index', currentIndex - 1);
       model.save_changes();
     }
@@ -372,22 +266,6 @@ function render({ model, el }) {
   noBtn.addEventListener('click', () => annotate('no'));
   skipBtn.addEventListener('click', () => annotate('skip'));
   
-  // Modal event listeners
-  settingsBtn.addEventListener('click', () => {
-    updateModalShortcuts();
-    modal.style.display = 'flex';
-  });
-  
-  modalCloseBtn.addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
-  
-  // Close modal when clicking outside
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.style.display = 'none';
-    }
-  });
   
   // Helper function to parse keyboard shortcuts with modifiers
   function parseShortcut(event) {
@@ -439,12 +317,13 @@ function render({ model, el }) {
     const shortcuts = model.get('shortcuts');
     const shortcutString = parseShortcut(e);
     
-    console.log('Key pressed:', shortcutString, 'event.key:', e.key, 'event.code:', e.code);
-    console.log('Available shortcuts:', shortcuts);
-    console.log('Looking for shortcut:', shortcutString, 'Found:', shortcuts[shortcutString]);
+      // Debug logs hidden
+    // console.log('Key pressed:', shortcutString, 'event.key:', e.key, 'event.code:', e.code);
+    // console.log('Available shortcuts:', shortcuts);
+    // console.log('Looking for shortcut:', shortcutString, 'Found:', shortcuts[shortcutString]);
     
     if (shortcuts[shortcutString]) {
-      console.log('Executing action:', shortcuts[shortcutString]);
+      // console.log('Executing action:', shortcuts[shortcutString]);
       e.preventDefault();
       e.stopPropagation();
       handleAction(shortcuts[shortcutString]);
@@ -465,12 +344,124 @@ function render({ model, el }) {
   model.on('change:examples', updateDisplay);
   model.on('change:notes', updateDisplay);
   model.on('change:shortcuts', updateDisplay);
+  model.on('change:gamepad_shortcuts', updateDisplay);
   
   // Initial display
   updateDisplay();
   
   // Focus container initially to enable keyboard shortcuts
   container.focus();
+  
+  // Gamepad support (variables already declared above)
+  
+  function updateGamepadDisplay() {
+    if (gamepadConnected) {
+      gamepadInfo.style.display = 'block';
+      gamepadInfo.innerHTML = `<strong>Gamepad:</strong> ${lastGamepadEvent}`;
+    } else {
+      gamepadInfo.style.display = 'none';
+    }
+  }
+  
+  // Gamepad connection events
+  window.addEventListener('gamepadconnected', (e) => {
+    console.log('Gamepad connected:', e.gamepad);
+    gamepadConnected = true;
+    gamepadIndex = e.gamepad.index;
+    lastGamepadEvent = 'Connected';
+    updateGamepadDisplay();
+  });
+  
+  window.addEventListener('gamepaddisconnected', (e) => {
+    console.log('Gamepad disconnected:', e.gamepad);
+    gamepadConnected = false;
+    gamepadIndex = -1;
+    lastGamepadEvent = 'Disconnected';
+    updateGamepadDisplay();
+  });
+  
+  // Gamepad polling for button presses
+  let lastButtonStates = {};
+  
+  function pollGamepad() {
+    if (!gamepadConnected) {
+      requestAnimationFrame(pollGamepad);
+      return;
+    }
+    
+    const gamepads = navigator.getGamepads();
+    const gamepad = gamepads[gamepadIndex];
+    
+    if (gamepad) {
+      // Check for button presses
+      gamepad.buttons.forEach((button, index) => {
+        const buttonKey = `button_${index}`;
+        const wasPressed = lastButtonStates[buttonKey] || false;
+        const isPressed = button.pressed;
+        
+        // Update currently pressed buttons set
+        if (isPressed) {
+          currentlyPressedButtons.add(index);
+        } else {
+          currentlyPressedButtons.delete(index);
+        }
+        
+        // Detect button press (transition from not pressed to pressed)
+        if (isPressed && !wasPressed) {
+          lastGamepadEvent = `Button ${index} pressed`;
+          updateGamepadDisplay();
+          // console.log(`Gamepad button ${index} pressed`);
+          
+          // Check for mapped gamepad actions
+          const gamepadShortcuts = model.get('gamepad_shortcuts');
+          if (gamepadShortcuts[buttonKey]) {
+            // console.log(`Executing gamepad action: ${gamepadShortcuts[buttonKey]}`);
+            handleAction(gamepadShortcuts[buttonKey]);
+          }
+        }
+        
+        lastButtonStates[buttonKey] = isPressed;
+      });
+      
+      // Check for axis movements (significant changes)
+      gamepad.axes.forEach((axis, index) => {
+        const axisKey = `axis_${index}`;
+        const lastValue = lastButtonStates[axisKey] || 0;
+        const currentValue = axis;
+        
+        // Detect significant axis movement (threshold of 0.5)
+        if (Math.abs(currentValue - lastValue) > 0.1) {
+          lastGamepadEvent = `Axis ${index}: ${currentValue.toFixed(2)}`;
+          updateGamepadDisplay();
+          // console.log(`Gamepad axis ${index} moved to ${currentValue.toFixed(2)}`);
+        }
+        
+        lastButtonStates[axisKey] = currentValue;
+      });
+      
+      // Update display whenever button states change
+      updateDisplay();
+    }
+    
+    // Continue polling
+    requestAnimationFrame(pollGamepad);
+  }
+  
+  // Start gamepad polling
+  pollGamepad();
+  
+  // Also check for gamepads that might already be connected
+  const existingGamepads = navigator.getGamepads();
+  for (let i = 0; i < existingGamepads.length; i++) {
+    if (existingGamepads[i]) {
+      console.log('Found existing gamepad:', existingGamepads[i]);
+      gamepadConnected = true;
+      gamepadIndex = i;
+      lastGamepadEvent = 'Connected';
+      updateGamepadDisplay();
+      break;
+    }
+  }
 }
 
 export default { render };
