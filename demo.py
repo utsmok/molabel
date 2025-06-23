@@ -11,7 +11,7 @@ def _():
 
 
 @app.cell
-def _(div, mo, p):
+def _(code, div, mo, p, pre):
     from molabel import SimpleLabel
 
     def render(ex):
@@ -19,6 +19,7 @@ def _(div, mo, p):
             div(
                 p("Is this about Python, the progamming language?", klass="text-2xl"),
                 p(ex["text"], klass="text-gray-500"), 
+                pre(code(ex['text']))
             )
         )
 
@@ -38,11 +39,11 @@ def _(widget):
 
 @app.cell
 def _():
-    from mohtml import p, tailwind_css, div, br
+    from mohtml import p, tailwind_css, div, br, pre, code
     from mohtml.components import terminal
 
     tailwind_css()
-    return div, p
+    return code, div, p, pre
 
 
 @app.cell
