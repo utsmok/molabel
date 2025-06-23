@@ -98,7 +98,6 @@ function render({ model, el }) {
   let speechRecognition = null;
   let speechAvailable = false;
   let isRecording = false;
-  let speechKeyPressed = false;
   let speechGamepadPressed = false;
   let originalNotesText = ''; // Store original text before speech session
   
@@ -377,13 +376,14 @@ function render({ model, el }) {
     const shortcuts = model.get('shortcuts');
     const shortcutString = parseShortcut(e);
     
-    // Handle speech push-to-talk
-    if (shortcuts[shortcutString] === 'speech_notes' && !speechKeyPressed) {
-      console.log('🎹 Keyboard speech key pressed - starting recording');
-      speechKeyPressed = true;
-      startSpeechRecognition();
+    console.log('🎹 Keydown event - shortcut:', shortcutString);
+    
+    // Handle speech toggle (same as mouse click)
+    if (shortcuts[shortcutString] === 'speech_notes') {
+      console.log('🎹 Keyboard speech key pressed - toggling recording');
       e.preventDefault();
       e.stopPropagation();
+      handleAction('speech_notes');
       return;
     }
     
@@ -395,19 +395,7 @@ function render({ model, el }) {
     }
   });
   
-  container.addEventListener('keyup', (e) => {
-    const shortcuts = model.get('shortcuts');
-    const shortcutString = parseShortcut(e);
-    
-    // Handle speech push-to-talk release
-    if (shortcuts[shortcutString] === 'speech_notes' && speechKeyPressed) {
-      console.log('🎹 Keyboard speech key released - stopping recording');
-      speechKeyPressed = false;
-      stopSpeechRecognition();
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
+  // No keyup listener needed - keyboard shortcut now works as toggle
   
   // Focus container on click to enable keyboard shortcuts
   container.addEventListener('click', (e) => {
@@ -492,6 +480,7 @@ function render({ model, el }) {
       speechRecognition.onend = () => {
         console.log('🛑 Speech recognition ended. Final stored text:', originalNotesText);
         isRecording = false;
+        
         // Ensure final text is preserved
         notesField.value = originalNotesText;
         console.log('📝 Set notes field to final text on end');
@@ -501,6 +490,7 @@ function render({ model, el }) {
       speechRecognition.onerror = (event) => {
         console.log('❌ Speech recognition error:', event.error);
         isRecording = false;
+        
         // Preserve text even on error
         notesField.value = originalNotesText;
         console.log('📝 Set notes field to stored text on error');
