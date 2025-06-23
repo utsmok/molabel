@@ -94,7 +94,156 @@ function render({ model, el }) {
   
   const modalBody = document.createElement('div');
   modalBody.className = 'molabel-modal-body';
-  modalBody.innerHTML = '<p>Settings configuration will go here...</p>';
+  
+  // Create shortcuts display section
+  const shortcutsSection = document.createElement('div');
+  shortcutsSection.innerHTML = '<h4>Keyboard Shortcuts</h4>';
+  
+  const shortcutsList = document.createElement('div');
+  shortcutsList.className = 'molabel-shortcuts-list';
+  
+  // Store for managing shortcut edits
+  let tempShortcuts = {};
+  
+  function updateModalShortcuts() {
+    const shortcuts = model.get('shortcuts');
+    tempShortcuts = {...shortcuts}; // Copy for editing
+    
+    const actionLabels = {
+      'prev': 'Previous',
+      'yes': 'Yes',
+      'no': 'No', 
+      'skip': 'Skip',
+      'focus_notes': 'Focus Notes'
+    };
+    
+    const actions = ['prev', 'yes', 'no', 'skip', 'focus_notes'];
+    shortcutsList.innerHTML = '';
+    
+    actions.forEach(action => {
+      // Find current shortcut for this action
+      const currentShortcut = Object.keys(tempShortcuts).find(key => tempShortcuts[key] === action) || '';
+      
+      // Parse current shortcut to extract modifiers and key
+      const parts = currentShortcut.split('+');
+      const currentModifiers = parts.slice(0, -1);
+      const currentKey = parts[parts.length - 1] || '';
+      
+      const shortcutItem = document.createElement('div');
+      shortcutItem.className = 'molabel-shortcut-row';
+      
+      const actionLabel = document.createElement('span');
+      actionLabel.className = 'molabel-shortcut-action';
+      actionLabel.textContent = actionLabels[action];
+      
+      // Create modifier checkboxes
+      const modifiersContainer = document.createElement('div');
+      modifiersContainer.className = 'molabel-modifiers';
+      
+      ['Ctrl', 'Alt', 'Shift'].forEach(modifier => {
+        const label = document.createElement('label');
+        label.className = 'molabel-modifier-label';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = currentModifiers.includes(modifier);
+        checkbox.dataset.modifier = modifier;
+        checkbox.dataset.action = action;
+        
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(modifier));
+        modifiersContainer.appendChild(label);
+      });
+      
+      // Add "+" symbol
+      const plusSpan = document.createElement('span');
+      plusSpan.textContent = '+';
+      plusSpan.className = 'molabel-plus';
+      
+      // Create key dropdown
+      const keySelect = document.createElement('select');
+      keySelect.className = 'molabel-key-select';
+      keySelect.dataset.action = action;
+      
+      // Common keys
+      const keys = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 
+                   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+                   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+                   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Enter'];
+      
+      keys.forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key || '(none)';
+        if (key === currentKey) option.selected = true;
+        keySelect.appendChild(option);
+      });
+      
+      // Create preview span
+      const preview = document.createElement('span');
+      preview.className = 'molabel-shortcut-preview';
+      
+      function updateShortcut() {
+        const modifiers = [];
+        shortcutItem.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+          modifiers.push(cb.dataset.modifier);
+        });
+        
+        const key = keySelect.value;
+        
+        // Remove old mapping for this action
+        Object.keys(tempShortcuts).forEach(shortcutKey => {
+          if (tempShortcuts[shortcutKey] === action) {
+            delete tempShortcuts[shortcutKey];
+          }
+        });
+        
+        // Create new shortcut string
+        let shortcutString = '';
+        if (modifiers.length > 0 && key) {
+          shortcutString = modifiers.join('+') + '+' + key;
+        } else if (key) {
+          shortcutString = key;
+        }
+        
+        // Update preview to show the actual shortcut format
+        if (shortcutString) {
+          preview.textContent = shortcutString;
+        } else if (key && modifiers.length === 0) {
+          preview.textContent = key;
+        } else {
+          preview.textContent = '(none)';
+        }
+        
+        // Add to temp shortcuts and immediately update model
+        if (shortcutString) {
+          tempShortcuts[shortcutString] = action;
+        }
+        
+        // Apply changes immediately
+        model.set('shortcuts', {...tempShortcuts});
+        model.save_changes();
+      }
+      
+      // Add event listeners
+      modifiersContainer.addEventListener('change', updateShortcut);
+      keySelect.addEventListener('change', updateShortcut);
+      
+      shortcutItem.appendChild(actionLabel);
+      shortcutItem.appendChild(modifiersContainer);
+      shortcutItem.appendChild(plusSpan);
+      shortcutItem.appendChild(keySelect);
+      shortcutItem.appendChild(preview);
+      shortcutsList.appendChild(shortcutItem);
+      
+      // Initial update - call after DOM is assembled
+      updateShortcut();
+    });
+  }
+  
+  shortcutsSection.appendChild(shortcutsList);
+  
+  modalBody.appendChild(shortcutsSection);
   
   modalContent.appendChild(modalHeader);
   modalContent.appendChild(modalBody);
@@ -225,6 +374,7 @@ function render({ model, el }) {
   
   // Modal event listeners
   settingsBtn.addEventListener('click', () => {
+    updateModalShortcuts();
     modal.style.display = 'flex';
   });
   
@@ -239,20 +389,65 @@ function render({ model, el }) {
     }
   });
   
+  // Helper function to parse keyboard shortcuts with modifiers
+  function parseShortcut(event) {
+    const modifiers = [];
+    if (event.ctrlKey) modifiers.push('Ctrl');
+    if (event.altKey) modifiers.push('Alt');
+    if (event.shiftKey) modifiers.push('Shift');
+    if (event.metaKey) modifiers.push('Meta');
+    
+    // Use event.code for consistent key identification
+    let key = event.code;
+    
+    // Filter out modifier keys themselves
+    const modifierCodes = ['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 
+                          'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight'];
+    if (modifierCodes.includes(key)) {
+      return ''; // Don't capture just modifier keys
+    }
+    
+    // Clean up the key code to make it more readable
+    key = key.replace('Key', '').replace('Digit', ''); // KeyA → A, Digit1 → 1
+    
+    return modifiers.length > 0 ? `${modifiers.join('+')}+${key}` : key;
+  }
+  
+  // Helper function to handle shortcut actions
+  function handleAction(action) {
+    switch(action) {
+      case 'prev':
+        navigate('prev');
+        break;
+      case 'yes':
+        annotate('yes');
+        break;
+      case 'no':
+        annotate('no');
+        break;
+      case 'skip':
+        annotate('skip');
+        break;
+      case 'focus_notes':
+        notesField.focus();
+        break;
+    }
+  }
+  
   // Keyboard shortcuts - attach to container instead of document
   container.addEventListener('keydown', (e) => {
     const shortcuts = model.get('shortcuts');
-    const key = e.key.toLowerCase();
+    const shortcutString = parseShortcut(e);
     
-    // Don't process shortcuts when typing in notes field
-    if (e.target === notesField) return;
+    console.log('Key pressed:', shortcutString, 'event.key:', e.key, 'event.code:', e.code);
+    console.log('Available shortcuts:', shortcuts);
+    console.log('Looking for shortcut:', shortcutString, 'Found:', shortcuts[shortcutString]);
     
-    if (shortcuts[key]) {
+    if (shortcuts[shortcutString]) {
+      console.log('Executing action:', shortcuts[shortcutString]);
       e.preventDefault();
       e.stopPropagation();
-      const action = shortcuts[key];
-      if (action === 'prev') navigate('prev');
-      else if (['yes', 'no', 'skip'].includes(action)) annotate(action);
+      handleAction(shortcuts[shortcutString]);
     }
   });
   

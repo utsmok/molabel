@@ -22,7 +22,18 @@ class SimpleLabel(anywidget.AnyWidget):
         self.render = render
         self.examples = [{**ex, "_html": self.render(ex)} for ex in examples]
         self.notes = notes
-        self.shortcuts = shortcuts or {}
+        
+        # Default shortcuts with Alt modifier (using event.code format)
+        default_shortcuts = {
+            "Alt+1": "prev",
+            "Alt+2": "yes", 
+            "Alt+3": "no",
+            "Alt+4": "skip",
+            "Alt+5": "focus_notes"
+        }
+        
+        # Use provided shortcuts or defaults
+        self.shortcuts = shortcuts if shortcuts is not None else default_shortcuts
 
     def get_annotations(self):
         """Return the collected annotations"""
