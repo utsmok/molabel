@@ -58,8 +58,19 @@ function render({ model, el }) {
   micButton.title = 'Click to record speech or hold Alt+6';
   micButton.type = 'button';
   
+  const gamepadIndicator = document.createElement('span');
+  gamepadIndicator.className = 'molabel-gamepad-indicator';
+  gamepadIndicator.innerHTML = '🎮';
+  gamepadIndicator.style.display = 'none';
+  gamepadIndicator.title = 'Gamepad detected';
+  
+  const buttonContainer = document.createElement('div');
+  buttonContainer.className = 'molabel-button-container';
+  buttonContainer.appendChild(gamepadIndicator);
+  buttonContainer.appendChild(micButton);
+  
   notesLabelContainer.appendChild(notesLabel);
-  notesLabelContainer.appendChild(micButton);
+  notesLabelContainer.appendChild(buttonContainer);
   
   const notesField = document.createElement('textarea');
   notesField.className = 'molabel-notes';
@@ -83,10 +94,7 @@ function render({ model, el }) {
   const shortcutsInfo = document.createElement('div');
   shortcutsInfo.className = 'molabel-shortcuts';
   
-  // Create gamepad display
-  const gamepadInfo = document.createElement('div');
-  gamepadInfo.className = 'molabel-gamepad';
-  gamepadInfo.style.display = 'none'; // Hidden by default
+  // Gamepad indicator is now part of notes label container
   
   // Gamepad state variables (declare early)
   let gamepadConnected = false;
@@ -208,7 +216,6 @@ function render({ model, el }) {
       shortcutsText += `
             </tbody>
           </table>
-          ${gamepadConnected && lastGamepadEvent ? `<div class="gamepad-activity">Last gamepad activity: ${lastGamepadEvent}</div>` : ''}
         </details>`;
     }
     
@@ -558,14 +565,7 @@ function render({ model, el }) {
   
   // Gamepad support (variables already declared above)
   
-  function updateGamepadDisplay() {
-    if (gamepadConnected) {
-      gamepadInfo.style.display = 'block';
-      gamepadInfo.innerHTML = `<strong>Gamepad:</strong> ${lastGamepadEvent}`;
-    } else {
-      gamepadInfo.style.display = 'none';
-    }
-  }
+  // Gamepad display now handled by simple indicator emoji
   
   // Gamepad connection events
   window.addEventListener('gamepadconnected', (e) => {
@@ -573,7 +573,7 @@ function render({ model, el }) {
     gamepadConnected = true;
     gamepadIndex = e.gamepad.index;
     lastGamepadEvent = 'Connected';
-    updateGamepadDisplay();
+    gamepadIndicator.style.display = 'inline';
   });
   
   window.addEventListener('gamepaddisconnected', (e) => {
@@ -581,7 +581,7 @@ function render({ model, el }) {
     gamepadConnected = false;
     gamepadIndex = -1;
     lastGamepadEvent = 'Disconnected';
-    updateGamepadDisplay();
+    gamepadIndicator.style.display = 'none';
   });
   
   // Gamepad polling for button presses
@@ -613,7 +613,7 @@ function render({ model, el }) {
         // Detect button press (transition from not pressed to pressed)
         if (isPressed && !wasPressed) {
           lastGamepadEvent = `Button ${index} pressed`;
-          updateGamepadDisplay();
+          gamepadIndicator.style.display = 'inline'; // Show indicator on any button press
           // console.log(`Gamepad button ${index} pressed`);
           
           // Check for mapped gamepad actions
@@ -654,7 +654,7 @@ function render({ model, el }) {
         // Detect significant axis movement (threshold of 0.5)
         if (Math.abs(currentValue - lastValue) > 0.1) {
           lastGamepadEvent = `Axis ${index}: ${currentValue.toFixed(2)}`;
-          updateGamepadDisplay();
+          gamepadIndicator.style.display = 'inline'; // Show indicator on axis movement
           // console.log(`Gamepad axis ${index} moved to ${currentValue.toFixed(2)}`);
         }
         
@@ -679,7 +679,7 @@ function render({ model, el }) {
       gamepadConnected = true;
       gamepadIndex = i;
       lastGamepadEvent = 'Connected';
-      updateGamepadDisplay();
+      gamepadIndicator.style.display = 'inline';
       break;
     }
   }
