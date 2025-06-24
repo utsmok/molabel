@@ -2,7 +2,7 @@ function render({ model, el }) {
   // Create the main container
   const container = document.createElement('div');
   container.className = 'molabel-container';
-  container.tabIndex = 0; // Make container focusable for keyboard events
+  container.tabIndex = 0; // Make container focusable via tab key only
   
   // Create header with status and settings
   const header = document.createElement('div');
@@ -397,14 +397,7 @@ function render({ model, el }) {
   
   // No keyup listener needed - keyboard shortcut now works as toggle
   
-  // Focus container on click to enable keyboard shortcuts
-  container.addEventListener('click', (e) => {
-    // Don't steal focus if clicking on interactive elements
-    if (e.target === notesField || e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA') {
-      return;
-    }
-    container.focus();
-  });
+  // Click handler removed to prevent autofocus in Marimo
   
   // Listen for model changes
   model.on('change:current_index', updateDisplay);
@@ -560,8 +553,7 @@ function render({ model, el }) {
   // Initial display
   updateDisplay();
   
-  // Focus container initially to enable keyboard shortcuts
-  container.focus();
+  // No autofocus to prevent jumping in Marimo notebooks
   
   // Gamepad support (variables already declared above)
   
