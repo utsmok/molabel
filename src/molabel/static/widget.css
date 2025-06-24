@@ -148,6 +148,17 @@
     cursor: not-allowed;
 }
 
+.molabel-button-container {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.molabel-gamepad-indicator {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
 .molabel-mic-btn.recording {
     background: #dc3545;
     border-color: #dc3545;
