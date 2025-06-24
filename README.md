@@ -14,7 +14,7 @@ A simple annotation widget for labeling examples with speech recognition support
 ## Installation
 
 ```bash
-pip install -e .
+uv pip install molabel
 ```
 
 ## Usage
@@ -32,17 +32,42 @@ widget = SimpleLabel(
     notes=True
 )
 
-# Get annotations
+# Display in Jupyter notebook
+widget
+
+# Get annotations after labeling
 annotations = widget.get_annotations()
 ```
+
+### Custom Shortcuts
+
+```python
+widget = SimpleLabel(
+    examples=examples,
+    render=render_example,
+    shortcuts={"Alt+Q": "prev", "Alt+W": "yes"},  # Custom keyboard
+    gamepad_shortcuts={"button_7": "yes"}  # Custom gamepad
+)
+```
+
+If you're keen to understand your gamepad better and how to map the buttons to actions, you can check [this notebook](https://koaning.github.io/mopad/). It will show every name of every button that you press in real time via the browser gamepad API. 
 
 ## Controls
 
 - **Mouse**: Click buttons or microphone icon
 - **Keyboard**: Alt+1 (prev), Alt+2 (yes), Alt+3 (no), Alt+4 (skip), Alt+5 (focus notes), Alt+6 (speech toggle)
-- **Gamepad**: Button mappings with push-to-talk speech on right bumper
+- **Gamepad**: Button mappings with push-to-talk speech on left trigger
+
+You can assign keyboard/gamepad shortcuts to the widget for all the possible actions: 
+
+- `prev` - go to the previous example
+- `yes` - label the example as yes
+- `no` - label the example as no
+- `skip` - skip the example
+- `focus_notes` - focus the notes field
+- `speech_notes` - start/stop speech recognition
 
 ## Requirements
 
-- Modern web browser with Speech Recognition API support
+- Modern web browser for Speech Recognition/Gamepad API support
 - Microphone access for speech features
