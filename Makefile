@@ -9,7 +9,7 @@ clean:
 	rm -rf *.tar.gz
 
 docs:
-	marimo export html-wasm demo.py -o docs --mode edit
+	marimo --yes export html-wasm demo.py -o docs --mode edit
 
 pypi: clean
 	uv build
