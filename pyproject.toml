@@ -1,6 +1,6 @@
 [project]
 name = "molabel"
-version = "0.1.0"
+version = "0.1.1"
 description = "A simple annotation widget for labeling examples"
 authors = [{name = "Your Name", email = "your.email@example.com"}]
 readme = "README.md"

@@ -4,10 +4,29 @@ __generated_with = "0.14.6"
 app = marimo.App(width="columns")
 
 
-@app.cell
+@app.cell(column=0)
 def _():
     import marimo as mo
     return (mo,)
+
+
+@app.cell
+def _():
+    from mohtml import p, tailwind_css, div, br, pre, code
+    from mohtml.components import terminal
+
+    tailwind_css()
+    return code, div, p, pre
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell(column=1)
+def _():
+    return
 
 
 @app.cell
@@ -28,26 +47,6 @@ def _(code, div, mo, p, pre):
     )
 
     widget
-    return (widget,)
-
-
-@app.cell
-def _(widget):
-    widget.annotations
-    return
-
-
-@app.cell
-def _():
-    from mohtml import p, tailwind_css, div, br, pre, code
-    from mohtml.components import terminal
-
-    tailwind_css()
-    return code, div, p, pre
-
-
-@app.cell
-def _():
     return
 
 

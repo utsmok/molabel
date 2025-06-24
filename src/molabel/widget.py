@@ -3,6 +3,18 @@ import traitlets
 from pathlib import Path
 
 
+def _autocast(func): 
+    def inner(example): 
+        out = func(example)
+        if hasattr(out, "_display_"):
+            return str(out)
+        if hasattr(out, "_repr_markdown_"):
+            return str(out)
+        if hasattr(out, "_repr_html_"):
+            return str(out)
+        return out
+    return inner
+
 
 class SimpleLabel(anywidget.AnyWidget):
     _esm = Path(__file__).parent / "static" / "widget.js"
@@ -20,8 +32,8 @@ class SimpleLabel(anywidget.AnyWidget):
     
     def __init__(self, examples, render, notes=True, shortcuts=None, gamepad_shortcuts=None):
         super().__init__()
-        self.render = render
-        self.examples = [{**ex, "_html": self.render(ex)} for ex in examples]
+        render_func = _autocast(render)
+        self.examples = [{**ex, "_html": render_func(ex)} for ex in examples]
         self.notes = notes
         
         # Default shortcuts with Alt modifier (using event.code format)
