@@ -2,7 +2,7 @@
 
 A simple annotation widget for labeling examples with speech recognition support.
 
-For an interactive demo: [check GitHub pages](https://koaning.github.io/molabel/). 
+For an interactive demo check GitHub pages [here](https://koaning.github.io/molabel/). 
 
 ## Features
 
