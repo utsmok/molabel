@@ -273,7 +273,7 @@ def _(mo):
         r"""
     ## Part Five out of Four
 
-    One moar thing ... 
+    One moar thing ...
     """
     )
     return
