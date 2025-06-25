@@ -126,6 +126,7 @@ def _():
 def _():
     from mohtml import p, tailwind_css, div, br, pre, code
     from mohtml.components import terminal
+    import jinja2
     import pandas as pd
 
     tailwind_css()
