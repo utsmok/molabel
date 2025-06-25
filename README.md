@@ -32,7 +32,7 @@ widget = SimpleLabel(
     notes=True
 )
 
-# Display in Jupyter notebook
+# Display in notebook
 widget
 
 # Get annotations after labeling
