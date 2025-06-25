@@ -4,11 +4,11 @@ A simple annotation widget for labeling examples with speech recognition support
 
 ## Features
 
-- **Interactive annotation**: Yes/No/Skip buttons with Previous navigation
-- **Speech recognition**: Record voice notes using microphone, keyboard, or gamepad
+![localhost_2719_](https://github.com/user-attachments/assets/58c9622d-e497-4965-a564-b8340e66da90)
+
+- **Interactive annotation**: <kbd>Yes</kbd>/<kbd>No</kbd>/<kbd>Skip</kbd> buttons with <kbd>Previous</kbd> navigation
 - **Keyboard shortcuts**: Alt+1-6 for quick navigation and actions
 - **Gamepad support**: Controller input with push-to-talk speech
-- **Progress tracking**: Visual progress bar showing current position
 - **Notes field**: Text annotations with live speech transcription
 
 ## Installation
