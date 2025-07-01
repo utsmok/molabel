@@ -48,9 +48,10 @@ class Action(StrEnum):
     SKIP = "skip"
     FOCUS_NOTES = "focus_notes"
     SPEECH_NOTES = "speech_notes"
-    # New actions for v0.1.2
+    # New action for v0.1.2
     SPEECH_SELECTION = "speech_selection"
-    HELP_OVERLAY = "help_overlay"  # Not changeable in this initial implementation, added for consistency
+    HELP_OVERLAY = "help_overlay" # Non-changeable hotkey for now
+
 
 
 # Default shortcuts with Alt modifier (using event.code format)

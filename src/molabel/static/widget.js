@@ -1,106 +1,80 @@
 function render({ model, el }) {
-  // Use a more robust method to load external CSS via @import.
-  function loadExternalStyles() {
-    const styleId = 'molabel-external-styles';
-    if (document.getElementById(styleId)) return;
 
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      @import url("https://cdn.jsdelivr.net/npm/gamepad.css@latest/styles.min.css");
-      @import url("https://unpkg.com/keyboard-css@1.2.4/dist/css/main.min.css");
-    `;
-    document.head.appendChild(style);
-  }
-  loadExternalStyles();
-
-  // --- 1. DOM Element Creation ---
   const container = document.createElement('div');
   container.className = 'molabel-container';
   container.tabIndex = 0;
-
+  // Create header with status and settings
   const header = document.createElement('div');
   header.className = 'molabel-header';
-
-  const statusContainer = document.createElement('div');
-  statusContainer.className = 'molabel-header-center';
   const status = document.createElement('div');
   status.className = 'molabel-status';
-  statusContainer.appendChild(status);
-
-  const helpIcon = document.createElement('div');
-  helpIcon.className = 'molabel-help-icon';
-  helpIcon.innerHTML = '❓';
-  helpIcon.title = "Show shortcuts (hold Alt+i)";
-
-  header.appendChild(document.createElement('div')); // Left spacer
-  header.appendChild(statusContainer);
-  header.appendChild(helpIcon);
-
+  header.appendChild(status);
+  // Create example display
   const exampleContainer = document.createElement('div');
   exampleContainer.className = 'molabel-example';
+  // Create last choice display for speech commands
   const lastChoiceDisplay = document.createElement('div');
   lastChoiceDisplay.className = 'molabel-last-choice';
+  // Create controls
   const controls = document.createElement('div');
   controls.className = 'molabel-controls';
-
-  const btnMap = {
-    prev: document.createElement('button'),
-    yes: document.createElement('button'),
-    no: document.createElement('button'),
-    skip: document.createElement('button'),
-  };
-  btnMap.prev.textContent = 'Previous';
-  btnMap.yes.textContent = 'Yes';
-  btnMap.no.textContent = 'No';
-  btnMap.skip.textContent = 'Skip';
-  Object.entries(btnMap).forEach(([key, btn]) => {
-    btn.className = `molabel-btn molabel-btn-${key}`;
-    controls.appendChild(btn);
-  });
-
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = 'Previous';
+  prevBtn.className = 'molabel-btn molabel-btn-prev';
+  const yesBtn = document.createElement('button');
+  yesBtn.textContent = 'Yes';
+  yesBtn.className = 'molabel-btn molabel-btn-yes';
+  const noBtn = document.createElement('button');
+  noBtn.textContent = 'No';
+  noBtn.className = 'molabel-btn molabel-btn-no';
+  const skipBtn = document.createElement('button');
+  skipBtn.textContent = 'Skip';
+  skipBtn.className = 'molabel-btn molabel-btn-skip';
+  controls.appendChild(prevBtn);
+  controls.appendChild(yesBtn);
+  controls.appendChild(noBtn);
+  controls.appendChild(skipBtn);
+  // Create notes field
   const notesContainer = document.createElement('div');
   notesContainer.className = 'molabel-notes-container';
   const notesLabelContainer = document.createElement('div');
   notesLabelContainer.className = 'molabel-notes-label-container';
   const notesLabel = document.createElement('label');
   notesLabel.textContent = 'Notes:';
-
   const micButton = document.createElement('button');
   micButton.className = 'molabel-mic-btn';
   micButton.innerHTML = '🎤';
-  micButton.title = 'Record notes with speech';
+  micButton.title = 'Click to record speech or hold Alt+6';
   micButton.type = 'button';
-
   const speechSelectionBtn = document.createElement('button');
   speechSelectionBtn.className = 'molabel-speech-select-btn';
   speechSelectionBtn.innerHTML = '🗣️';
-  speechSelectionBtn.title = 'Toggle Speech Command mode';
+  speechSelectionBtn.title = 'Toggle Speech Command mode (hold new hotkey)';
   speechSelectionBtn.type = 'button';
-
   const gamepadIndicator = document.createElement('span');
   gamepadIndicator.className = 'molabel-gamepad-indicator';
   gamepadIndicator.innerHTML = '🎮';
   gamepadIndicator.style.display = 'none';
   gamepadIndicator.title = 'Gamepad detected';
-
   const buttonContainer = document.createElement('div');
   buttonContainer.className = 'molabel-button-container';
   buttonContainer.appendChild(gamepadIndicator);
   buttonContainer.appendChild(speechSelectionBtn);
   buttonContainer.appendChild(micButton);
-
+  const helpBtn = document.createElement('button');
+  helpBtn.className = 'molabel-help-btn';
+  helpBtn.innerHTML = '❓';
+  helpBtn.title = 'Show shortcuts (Alt+i)';
+  buttonContainer.appendChild(helpBtn);
   notesLabelContainer.appendChild(notesLabel);
   notesLabelContainer.appendChild(buttonContainer);
-
   const notesField = document.createElement('textarea');
   notesField.className = 'molabel-notes';
   notesField.rows = 3;
-  notesField.placeholder = 'Add any notes...';
-
+  notesField.placeholder = 'Add any notes about this example...';
   notesContainer.appendChild(notesLabelContainer);
   notesContainer.appendChild(notesField);
-
+  // Create progress bar
   const progressContainer = document.createElement('div');
   progressContainer.className = 'molabel-progress-container';
   const progressBar = document.createElement('div');
@@ -110,116 +84,113 @@ function render({ model, el }) {
   progressBar.appendChild(progressFill);
   progressContainer.appendChild(progressBar);
 
-  const shortcutsInfo = document.createElement('div');
-  shortcutsInfo.className = 'molabel-shortcuts';
-
-  const helpOverlay = document.createElement('div');
-  helpOverlay.className = 'molabel-help-overlay';
-
+  // Gamepad state variables
+  let gamepadConnected = false;
+  let gamepadIndex = -1;
+  // Speech recognition variables
+  let speechRecognition = null;
+  let speechAvailable = false;
+  let isRecording = false; // For notes
+  let speechGamepadPressed = false;
+  let originalNotesText = '';
+  // Speech selection mode variables
+  let isSpeechSelectionMode = false;
+  let speechSelectionToggledOn = false; // True if activated by UI toggle
+  let speechSelectionHotkeyDown = false; // True if activated by hold-hotkey
+  let isHelpVisible = false;
+  // Assemble the widget
   container.appendChild(header);
   container.appendChild(progressContainer);
   container.appendChild(exampleContainer);
   container.appendChild(lastChoiceDisplay);
   container.appendChild(controls);
   container.appendChild(notesContainer);
-  container.appendChild(shortcutsInfo);
+
+  const helpOverlay = document.createElement('div');
+  helpOverlay.className = 'molabel-help-overlay';
+  const helpContent = document.createElement('div');
+  helpContent.className = 'molabel-help-content';
+  helpOverlay.appendChild(helpContent);
   container.appendChild(helpOverlay);
   el.appendChild(container);
 
-  // --- 2. State Variables ---
-  let gamepadConnected = false, gamepadIndex = -1;
-  let speechRecognition = null, speechAvailable = false, isRecording = false, speechGamepadPressed = false, originalNotesText = '';
-  let isSpeechSelectionMode = false, speechSelectionToggledOn = false, speechSelectionHotkeyDown = false;
-  let lastButtonStates = {};
-
-  // --- 3. Helper Functions ---
-  const GAMEPAD_BUTTON_MAP = {
-    button_0: { xbox: 'a', ps: 'cross' }, button_1: { xbox: 'b', ps: 'circle' },
-    button_2: { xbox: 'x', ps: 'square' }, button_3: { xbox: 'y', ps: 'triangle' },
-    button_4: { xbox: 'lb', ps: 'l1' }, button_5: { xbox: 'rb', ps: 'r1' },
-    button_6: { xbox: 'lt', ps: 'l2' }, button_7: { xbox: 'rt', ps: 'r2' },
-    button_8: { xbox: 'back', ps: 'share' }, button_9: { xbox: 'start', ps: 'options' },
-  };
-
-  function formatKeyboardShortcut(shortcut) {
-    return shortcut.split('+').map(key => `<kbd class="kbc-button">${key}</kbd>`).join(' + ');
-  }
-
-  function formatGamepadShortcut(buttonKey) {
-      const map = GAMEPAD_BUTTON_MAP[buttonKey];
-      if (!map) return '';
-      return `<div class="gamepad-button-wrapper"><i class="gamepad-button gamepad-button-xbox gamepad-button-xbox--${map.xbox}"></i> / <i class="gamepad-button gamepad-button-playstation gamepad-button-playstation--${map.ps}"></i></div>`;
-  }
-
-  function createShortcutOverlays() {
-    helpOverlay.innerHTML = '';
-    const actionToKeys = {};
-
-    for (const [key, action] of Object.entries(model.get('shortcuts'))) {
-        if (!actionToKeys[action]) actionToKeys[action] = {};
-        actionToKeys[action].keyboard = key;
+  function renderExample(example) {
+    if (typeof example === 'object') {
+      return JSON.stringify(example, null, 2);
     }
-    for (const [key, action] of Object.entries(model.get('gamepad_shortcuts'))) {
-        if (!actionToKeys[action]) actionToKeys[action] = {};
-        actionToKeys[action].gamepad = key;
-    }
-
-    const containerRect = container.getBoundingClientRect();
-    for (const [action, keys] of Object.entries(actionToKeys)) {
-        const targetButton = btnMap[action] || (action === 'focus_notes' ? notesField : null);
-        if (!targetButton) continue;
-
-        const rect = targetButton.getBoundingClientRect();
-        const badge = document.createElement('div');
-        badge.className = 'shortcut-badge';
-        badge.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
-        badge.style.top = `${rect.top - containerRect.top + rect.height / 2}px`;
-
-        let content = '';
-        if (keys.keyboard) content += `<div class="keyboard-shortcut">${formatKeyboardShortcut(keys.keyboard)}</div>`;
-        if (keys.gamepad) content += `<div class="gamepad-shortcut">${formatGamepadShortcut(keys.gamepad)}</div>`;
-
-        if (content) {
-            badge.innerHTML = content;
-            helpOverlay.appendChild(badge);
-        }
-    }
+    return String(example);
   }
-
-  function showHelp(visible) { helpOverlay.classList.toggle('visible', visible); }
-  function renderExample(example) { return typeof example === 'object' ? JSON.stringify(example, null, 2) : String(example); }
 
   function updateDisplay() {
     const examples = model.get('examples');
     const currentIndex = model.get('current_index');
+    const showNotes = model.get('notes');
+
     status.textContent = `Example ${currentIndex + 1} of ${examples.length}`;
+
     if (examples.length > 0 && currentIndex < examples.length) {
-      exampleContainer.innerHTML = examples[currentIndex]._html || renderExample(examples[currentIndex]);
+      const currentExample = examples[currentIndex];
+      if (currentExample._html) {
+        exampleContainer.innerHTML = currentExample._html;
+      } else {
+        exampleContainer.textContent = renderExample(currentExample);
+      }
     } else {
       exampleContainer.textContent = 'No examples to display';
     }
+
     const annotations = model.get('annotations');
     const existingAnnotation = annotations.find(ann => ann.index === currentIndex);
-    if (!isRecording) notesField.value = existingAnnotation?._notes || '';
-    notesContainer.style.display = model.get('notes') ? 'block' : 'none';
-    progressFill.style.width = `${examples.length > 0 ? (currentIndex / examples.length) * 100 : 0}%`;
-    btnMap.prev.disabled = currentIndex === 0;
+    const newNotesValue = existingAnnotation ? existingAnnotation._notes || '' : '';
+
+    if (!isRecording) {
+      notesField.value = newNotesValue;
+    }
+
+    notesContainer.style.display = showNotes ? 'block' : 'none';
+
+    const progress = examples.length > 0 ? (currentIndex / examples.length) * 100 : 0;
+    progressFill.style.width = `${progress}%`;
+
+    prevBtn.disabled = currentIndex === 0;
     const noMoreExamples = currentIndex >= examples.length;
-    btnMap.yes.disabled = noMoreExamples;
-    btnMap.no.disabled = noMoreExamples;
-    btnMap.skip.disabled = noMoreExamples;
+
+    yesBtn.disabled = noMoreExamples;
+    noBtn.disabled = noMoreExamples;
+    skipBtn.disabled = noMoreExamples;
+
+    if (currentIndex >= examples.length - 1 && currentIndex < examples.length) {
+      status.textContent = `Example ${currentIndex + 1} of ${examples.length} (Last example)`;
+    } else if (noMoreExamples) {
+      status.textContent = 'All examples annotated!';
+    }
   }
 
   function annotate(label) {
+    const examples = model.get('examples');
     const currentIndex = model.get('current_index');
-    if (currentIndex >= model.get('examples').length) return;
-    const annotation = { index: currentIndex, example: model.get('examples')[currentIndex], _label: label, _notes: model.get('notes') ? notesField.value : '', _timestamp: new Date().toISOString() };
+    const annotations = model.get('annotations');
+    const showNotes = model.get('notes');
+
+    if (currentIndex >= examples.length) return;
+
+    const annotation = {
+      index: currentIndex,
+      example: examples[currentIndex],
+      _label: label,
+      _notes: showNotes ? notesField.value : '',
+      _timestamp: new Date().toISOString()
+    };
+
     const feedbackClass = label === 'yes' ? 'success-feedback' : label === 'no' ? 'error-feedback' : 'skip-feedback';
-    btnMap[label].classList.add(feedbackClass);
-    setTimeout(() => { btnMap[label].classList.remove(feedbackClass); }, 300);
-    const newAnnotations = model.get('annotations').filter(ann => ann.index !== currentIndex);
+    const button = label === 'yes' ? yesBtn : label === 'no' ? noBtn : skipBtn;
+    button.classList.add(feedbackClass);
+    setTimeout(() => { button.classList.remove(feedbackClass); }, 300);
+
+    const newAnnotations = annotations.filter(ann => ann.index !== currentIndex);
     newAnnotations.push(annotation);
     model.set('annotations', newAnnotations);
+
     model.set('current_index', currentIndex + 1);
     model.save_changes();
   }
@@ -227,15 +198,49 @@ function render({ model, el }) {
   function navigate(direction) {
     const currentIndex = model.get('current_index');
     if (direction === 'prev' && currentIndex > 0) {
-      btnMap.prev.classList.add('prev-feedback');
-      setTimeout(() => { btnMap.prev.classList.remove('prev-feedback'); }, 300);
+      prevBtn.classList.add('prev-feedback');
+      setTimeout(() => { prevBtn.classList.remove('prev-feedback'); }, 300);
       model.set('current_index', currentIndex - 1);
       model.save_changes();
     }
   }
 
+  prevBtn.addEventListener('click', () => navigate('prev'));
+  yesBtn.addEventListener('click', () => annotate('yes'));
+  noBtn.addEventListener('click', () => annotate('no'));
+  skipBtn.addEventListener('click', () => annotate('skip'));
+
+  micButton.addEventListener('click', () => {
+    if (isRecording) stopSpeechRecognition();
+    else startSpeechRecognition();
+  });
+
+  speechSelectionBtn.addEventListener('click', () => {
+    speechSelectionToggledOn = !speechSelectionToggledOn;
+    if (speechSelectionToggledOn) {
+      startSpeechSelectionMode();
+    } else {
+      stopSpeechSelectionMode();
+    }
+  });
+
+  function parseShortcut(event) {
+    const modifiers = [];
+    if (event.ctrlKey) modifiers.push('Ctrl');
+    if (event.altKey) modifiers.push('Alt');
+    if (event.shiftKey) modifiers.push('Shift');
+    if (event.metaKey) modifiers.push('Meta');
+
+    let key = event.code;
+    const modifierCodes = ['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight'];
+    if (modifierCodes.includes(key)) return '';
+
+    key = key.replace('Key', '').replace('Digit', '');
+    return modifiers.length > 0 ? `${modifiers.join('+')}+${key}` : key;
+  }
+
   function handleAction(action) {
-    switch(action) {
+    switch (action) {
       case 'prev': navigate('prev'); break;
       case 'yes': annotate('yes'); break;
       case 'no': annotate('no'); break;
@@ -243,60 +248,146 @@ function render({ model, el }) {
       case 'focus_notes': notesField.focus(); break;
       case 'speech_notes':
         if (isSpeechSelectionMode) return;
-        if (isRecording) stopSpeechRecognition(); else startSpeechRecognition();
+        if (isRecording) stopSpeechRecognition();
+        else startSpeechRecognition();
         break;
+      case 'help_overlay': toggleHelpOverlay(); break;
     }
   }
 
-  function parseShortcut(event) {
-    const modifiers = [];
-    if (event.ctrlKey) modifiers.push('Ctrl');
-    if (event.altKey) modifiers.push('Alt');
-    if (event.shiftKey) modifiers.push('Shift');
-    const key = event.code.replace('Key', '').replace('Digit', '');
-    return modifiers.length > 0 ? `${modifiers.join('+')}+${key}` : key;
-  }
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isHelpVisible) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleHelpOverlay();
+      return;
+    }
+
+    const shortcutString = parseShortcut(e);
+
+    if (shortcutString.toLowerCase() === 'alt+i') {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleHelpOverlay();
+      return;
+    }
+
+    const shortcuts = model.get('shortcuts');
+    const action = shortcuts[shortcutString];
+
+    if (action === 'speech_selection') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (speechSelectionToggledOn) {
+        speechSelectionToggledOn = false;
+        stopSpeechSelectionMode();
+      } else if (!isSpeechSelectionMode) {
+        speechSelectionHotkeyDown = true;
+        startSpeechSelectionMode();
+      }
+      return;
+    }
+
+    if (action) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleAction(action);
+    }
+  });
+
+  container.addEventListener('keyup', (e) => {
+    const shortcuts = model.get('shortcuts');
+    const shortcutString = parseShortcut(e);
+    const action = shortcuts[shortcutString];
+
+    if (action === 'speech_selection' && speechSelectionHotkeyDown) {
+      e.preventDefault();
+      e.stopPropagation();
+      speechSelectionHotkeyDown = false;
+      stopSpeechSelectionMode();
+    }
+  });
+
+  model.on('change:current_index', updateDisplay);
+  model.on('change:examples', updateDisplay);
+  model.on('change:notes', updateDisplay);
+  model.on('change:shortcuts', updateDisplay);
+  model.on('change:gamepad_shortcuts', updateDisplay);
 
   function initSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       speechRecognition = new SpeechRecognition();
       speechRecognition.lang = 'en-US';
+
       speechRecognition.onresult = (event) => {
         if (isSpeechSelectionMode) {
-          const command = event.results[event.results.length - 1][0].transcript.trim().toLowerCase().split(' ')[0];
+          const fullTranscript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+          const command = fullTranscript.split(' ')[0];
+
           lastChoiceDisplay.textContent = `Heard: "${command}"`;
           let actionFound = true;
-          switch(command) {
+          switch (command) {
             case 'yes': handleAction('yes'); break;
             case 'no': handleAction('no'); break;
             case 'skip': handleAction('skip'); break;
             case 'previous': handleAction('prev'); break;
-            case 'stop': if (speechSelectionToggledOn) stopSpeechSelectionMode(); break;
-            default: actionFound = false; lastChoiceDisplay.textContent += ' (not valid)'; break;
+            case 'stop':
+              if (speechSelectionToggledOn) stopSpeechSelectionMode();
+              break;
+            default:
+              actionFound = false;
+              lastChoiceDisplay.textContent += ' (not valid)';
+              break;
           }
-          if (!actionFound) setTimeout(() => { if (lastChoiceDisplay.textContent.includes('(not valid)')) lastChoiceDisplay.textContent = ''; }, 2000);
-        } else {
-          let newFinalTranscript = '', newInterimTranscript = '';
+          if (!actionFound) {
+            setTimeout(() => { if (lastChoiceDisplay.textContent.includes('(not valid)')) lastChoiceDisplay.textContent = ''; }, 2000);
+          }
+        } else { // Note-taking logic
+          let newFinalTranscript = '';
+          let newInterimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) newFinalTranscript += transcript; else newInterimTranscript += transcript;
+            if (event.results[i].isFinal) newFinalTranscript += transcript;
+            else newInterimTranscript += transcript;
           }
-          if (newFinalTranscript) originalNotesText += (originalNotesText ? ' ' : '') + newFinalTranscript;
-          notesField.value = originalNotesText + (originalNotesText ? ' ' : '') + newInterimTranscript;
+          if (newFinalTranscript) {
+            const separator = originalNotesText ? ' ' : '';
+            originalNotesText += separator + newFinalTranscript;
+          }
+          const separator = originalNotesText ? ' ' : '';
+          notesField.value = originalNotesText + separator + newInterimTranscript;
         }
       };
+
       speechRecognition.onend = () => {
         if (isSpeechSelectionMode) {
-          if (speechSelectionToggledOn && isSpeechSelectionMode) { try { speechRecognition.start(); } catch(e) { stopSpeechSelectionMode(true); } }
-          else if (!speechSelectionToggledOn) { stopSpeechSelectionMode(); }
-        } else { isRecording = false; notesField.value = originalNotesText; updateRecordingUI(); }
+          if (speechSelectionToggledOn && isSpeechSelectionMode) {
+            try { speechRecognition.start(); } catch (e) { stopSpeechSelectionMode(true); }
+          } else if (!speechSelectionToggledOn) {
+            stopSpeechSelectionMode();
+          }
+        } else {
+          isRecording = false;
+          notesField.value = originalNotesText;
+          updateRecordingUI();
+        }
       };
+
       speechRecognition.onerror = (event) => {
-        if (isSpeechSelectionMode) { lastChoiceDisplay.textContent = `Error: ${event.error}`; stopSpeechSelectionMode(true); }
-        else { isRecording = false; notesField.value = originalNotesText; updateRecordingUI(); }
+        if (isSpeechSelectionMode) {
+          lastChoiceDisplay.textContent = `Error: ${event.error}`;
+          stopSpeechSelectionMode(true);
+        } else {
+          console.error('Speech recognition error for notes:', event.error);
+          isRecording = false;
+          notesField.value = originalNotesText;
+          updateRecordingUI();
+        }
       };
       speechAvailable = true;
+    } else {
+      speechAvailable = false;
     }
     updateMicButtonState();
   }
@@ -308,24 +399,31 @@ function render({ model, el }) {
     micButton.disabled = true;
     container.classList.add('speech-selection-active');
     speechSelectionBtn.classList.add('active');
+
     const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
     const speechRecognitionList = new SpeechGrammarList();
-    speechRecognitionList.addFromString('#JSGF V1.0; grammar commands; public <command> = yes | no | skip | previous | stop;', 1);
+    const grammar = '#JSGF V1.0; grammar commands; public <command> = yes | no | skip | previous | stop;';
+    speechRecognitionList.addFromString(grammar, 1);
+
     speechRecognition.grammars = speechRecognitionList;
     speechRecognition.continuous = false;
     speechRecognition.interimResults = false;
-    try { speechRecognition.start(); } catch(e) { stopSpeechSelectionMode(true); }
+
+    try { speechRecognition.start(); } catch (e) { stopSpeechSelectionMode(true); }
   }
 
   function stopSpeechSelectionMode(force = false) {
     if (!isSpeechSelectionMode && !force) return;
+
     isSpeechSelectionMode = false;
     speechSelectionToggledOn = false;
     speechSelectionHotkeyDown = false;
+
     container.classList.remove('speech-selection-active');
     speechSelectionBtn.classList.remove('active');
     lastChoiceDisplay.textContent = '';
     micButton.disabled = !speechAvailable;
+
     if (speechRecognition) {
       speechRecognition.stop();
       const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
@@ -334,15 +432,20 @@ function render({ model, el }) {
   }
 
   function updateRecordingUI() {
-    micButton.classList.toggle('recording', isRecording);
-    notesField.classList.toggle('recording', isRecording);
-    micButton.innerHTML = isRecording ? '🔴' : (speechAvailable ? '🎤' : '❌');
+    if (isRecording) {
+      micButton.classList.add('recording');
+      notesField.classList.add('recording');
+      micButton.innerHTML = '🔴';
+    } else {
+      micButton.classList.remove('recording');
+      notesField.classList.remove('recording');
+      micButton.innerHTML = speechAvailable ? '🎤' : '❌';
+    }
   }
 
   function updateMicButtonState() {
-    const disabled = !speechAvailable;
-    micButton.disabled = disabled;
-    speechSelectionBtn.disabled = disabled;
+    micButton.disabled = !speechAvailable;
+    speechSelectionBtn.disabled = !speechAvailable;
     updateRecordingUI();
   }
 
@@ -352,96 +455,229 @@ function render({ model, el }) {
       originalNotesText = notesField.value;
       speechRecognition.continuous = true;
       speechRecognition.interimResults = true;
-      try { speechRecognition.start(); updateRecordingUI(); } catch (error) { isRecording = false; }
+      try {
+        speechRecognition.start();
+        updateRecordingUI();
+      } catch (error) {
+        console.error("Error starting speech recognition for notes:", error);
+        isRecording = false;
+      }
     }
   }
 
-  function stopSpeechRecognition() { if (speechAvailable && isRecording) speechRecognition.stop(); }
+  function stopSpeechRecognition() {
+    if (speechAvailable && isRecording) {
+      speechRecognition.stop();
+    }
+  }
 
+  // Help Overlay functions and event listeners
+  helpBtn.addEventListener('click', () => handleAction('help_overlay'));
+  helpOverlay.addEventListener('click', (e) => {
+    if (e.target === helpOverlay) {
+      toggleHelpOverlay();
+    }
+  });
+
+  function toggleHelpOverlay() {
+    isHelpVisible = !isHelpVisible;
+    if (isHelpVisible) {
+      renderHelpContent();
+      helpOverlay.classList.add('is-visible');
+    } else {
+      helpOverlay.classList.remove('is-visible');
+    }
+  }
+
+  function renderHelpContent() {
+    const shortcuts = model.get('shortcuts');
+    const gamepadShortcuts = model.get('gamepad_shortcuts');
+
+    const GAMEPAD_NAMES = {
+      'button_0': { text: 'A', className: 'gamepad-btn gamepad-btn-round', style: { color: '#a3e82d', textShadow: '0 0 8px #1a2a02' } },
+      'button_1': { text: 'B', className: 'gamepad-btn gamepad-btn-round', style: { color: '#ff4d4d', textShadow: '0 0 8px #4d0000' } },
+      'button_2': { text: 'X', className: 'gamepad-btn gamepad-btn-round', style: { color: '#55b4ff', textShadow: '0 0 8px #002a4d' } },
+      'button_3': { text: 'Y', className: 'gamepad-btn gamepad-btn-round', style: { color: '#ffde55', textShadow: '0 0 8px #4d3c00' } },
+      'button_4': { text: 'LB', className: 'gamepad-btn gamepad-btn-rect' },
+      'button_5': { text: 'RB', className: 'gamepad-btn gamepad-btn-rect' },
+      'button_6': { text: 'LT', className: 'gamepad-btn gamepad-btn-trigger' },
+      'button_7': { text: 'RT', className: 'gamepad-btn gamepad-btn-trigger' },
+      'button_8': {
+        className: 'gamepad-btn gamepad-btn-round',
+        style: { color: 'white' },
+        html: `<svg class="gamepad-view-icon" viewBox="0 0 70 70" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><g transform="translate(0,-1052.5)"><circle cx="35" cy="1087.5" r="32.5"/><rect x="31.25" y="1085" width="20" height="15"/><path d="m38.75 1077.5v-5h-20v15h5"/></g></svg>`
+      },
+    };
+
+    // MODIFIED: Updated function to apply classes and inline styles
+    function createGamepadBadge(buttonKey) {
+      const badgeInfo = GAMEPAD_NAMES[buttonKey] || { text: buttonKey.replace(/button_/, 'B'), className: 'molabel-key' };
+      const span = document.createElement('span');
+      if (badgeInfo.className) {
+        span.className = badgeInfo.className;
+      }
+      if (badgeInfo.style) {
+        Object.assign(span.style, badgeInfo.style);
+      }
+      if (badgeInfo.html) {
+        span.innerHTML = badgeInfo.html;
+      } else {
+        span.textContent = badgeInfo.text;
+      }
+      return span;
+    }
+
+    function createKeyBadge(shortcutString) {
+      const container = document.createElement('span');
+      container.className = 'inline-flex items-center gap-1';
+      const keys = shortcutString.split('+');
+      keys.forEach((key, index) => {
+        const kbd = document.createElement('kbd');
+        kbd.className = 'molabel-key';
+        kbd.textContent = key;
+        container.appendChild(kbd);
+        if (index < keys.length - 1) {
+          const separator = document.createElement('span');
+          separator.className = 'key-separator';
+          separator.textContent = '+';
+          container.appendChild(separator);
+        }
+      });
+      return container;
+    }
+
+    const allActions = new Set();
+    Object.values(shortcuts).forEach(action => allActions.add(action));
+    Object.values(gamepadShortcuts).forEach(action => allActions.add(action));
+
+    const actionOrder = ['prev', 'yes', 'no', 'skip', 'focus_notes', 'speech_notes', 'speech_selection'];
+    const sortedActions = actionOrder.filter(action => allActions.has(action));
+
+    const keyForAction = Object.fromEntries(Object.entries(shortcuts).map(([k, v]) => [v, k]));
+    const gamepadForAction = Object.fromEntries(Object.entries(gamepadShortcuts).map(([k, v]) => [v, k]));
+
+    helpContent.innerHTML = ''; // Clear previous content
+
+    const title = document.createElement('h2');
+    title.className = 'molabel-help-title';
+    title.textContent = 'Shortcuts';
+    helpContent.appendChild(title);
+
+    const table = document.createElement('table');
+    table.className = 'molabel-help-table';
+
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    ['Action', 'Keyboard', 'Gamepad'].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+
+    const tbody = table.createTBody();
+    const addRow = (action, fixedKeys) => {
+      const row = tbody.insertRow();
+      const actionCell = row.insertCell();
+      actionCell.className = 'action-name-cell';
+      actionCell.textContent = action.replace(/_/g, ' ');
+
+      const keyboardCell = row.insertCell();
+      keyboardCell.className = 'shortcut-cell';
+      const keyboardKey = fixedKeys ? fixedKeys.keyboard : keyForAction[action];
+      if (keyboardKey) {
+        keyboardCell.appendChild(createKeyBadge(keyboardKey));
+      }
+
+      const gamepadCell = row.insertCell();
+      gamepadCell.className = 'shortcut-cell';
+      const gamepadKey = fixedKeys ? fixedKeys.gamepad : gamepadForAction[action];
+      if (gamepadKey) {
+        gamepadCell.appendChild(createGamepadBadge(gamepadKey));
+      }
+    };
+    sortedActions.forEach(action => addRow(action));
+    addRow('Show / Hide Help', { keyboard: 'Alt+i', gamepad: 'button_8' });
+    helpContent.appendChild(table);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'absolute top-2 right-3 text-2xl text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors';
+    closeBtn.innerHTML = '×';
+    closeBtn.title = 'Close (Esc)';
+    closeBtn.onclick = toggleHelpOverlay;
+    helpContent.appendChild(closeBtn);
+  }
+
+  initSpeechRecognition();
+  updateDisplay();
+
+  window.addEventListener('gamepadconnected', (e) => {
+    gamepadConnected = true;
+    gamepadIndex = e.gamepad.index;
+    gamepadIndicator.style.display = 'inline';
+  });
+
+  window.addEventListener('gamepaddisconnected', (e) => {
+    gamepadConnected = false;
+    gamepadIndex = -1;
+    gamepadIndicator.style.display = 'none';
+  });
+
+  let lastButtonStates = {};
   function pollGamepad() {
-    if (gamepadConnected) {
-      const gamepad = navigator.getGamepads()[gamepadIndex];
-      if (gamepad) {
-        const gamepadShortcuts = model.get('gamepad_shortcuts');
-        gamepad.buttons.forEach((button, index) => {
-          const buttonKey = `button_${index}`;
-          const isPressed = button.pressed, wasPressed = lastButtonStates[buttonKey] || false;
-          if (isPressed && !wasPressed) {
-            if (index === 8) { showHelp(true); return; }
-            const action = gamepadShortcuts[buttonKey];
+    if (!gamepadConnected) {
+      requestAnimationFrame(pollGamepad);
+      return;
+    }
+    const gamepad = navigator.getGamepads()[gamepadIndex];
+    if (gamepad) {
+      const gamepadShortcuts = model.get('gamepad_shortcuts');
+      gamepad.buttons.forEach((button, index) => {
+        const buttonKey = `button_${index}`;
+        const wasPressed = lastButtonStates[buttonKey] || false;
+        const isPressed = button.pressed;
+
+        if (isPressed && !wasPressed) {
+          if (buttonKey === 'button_8') {
+            toggleHelpOverlay();
+          }
+
+          gamepadIndicator.style.display = 'inline';
+          const action = gamepadShortcuts[buttonKey];
+          if (action) {
             if (action === 'speech_selection') {
-              if (speechSelectionToggledOn) { speechSelectionToggledOn = false; stopSpeechSelectionMode(); }
-              else if (!isSpeechSelectionMode) { speechSelectionHotkeyDown = true; startSpeechSelectionMode(); }
+              if (speechSelectionToggledOn) {
+                speechSelectionToggledOn = false;
+                stopSpeechSelectionMode();
+              } else if (!isSpeechSelectionMode) {
+                speechSelectionHotkeyDown = true;
+                startSpeechSelectionMode();
+              }
             } else if (action === 'speech_notes') {
               if (isSpeechSelectionMode) return;
               speechGamepadPressed = true;
               startSpeechRecognition();
-            } else if (action) { handleAction(action); }
+            } else {
+              handleAction(action);
+            }
           }
-          if (!isPressed && wasPressed) {
-            if (index === 8) { showHelp(false); return; }
-            const action = gamepadShortcuts[buttonKey];
-            if (action === 'speech_selection' && speechSelectionHotkeyDown) { speechSelectionHotkeyDown = false; stopSpeechSelectionMode(); }
-            else if (action === 'speech_notes' && speechGamepadPressed) { speechGamepadPressed = false; stopSpeechRecognition(); }
+        }
+
+        if (!isPressed && wasPressed) {
+          const action = gamepadShortcuts[buttonKey];
+          if (action === 'speech_selection' && speechSelectionHotkeyDown) {
+            speechSelectionHotkeyDown = false;
+            stopSpeechSelectionMode();
+          } else if (action === 'speech_notes' && speechGamepadPressed) {
+            speechGamepadPressed = false;
+            stopSpeechRecognition();
           }
-          lastButtonStates[buttonKey] = isPressed;
-        });
-      }
+        }
+        lastButtonStates[buttonKey] = isPressed;
+      });
     }
     requestAnimationFrame(pollGamepad);
   }
 
-  // --- 4. Event Listeners ---
-  Object.entries(btnMap).forEach(([action, btn]) => btn.addEventListener('click', () => action === 'prev' ? navigate('prev') : annotate(action)));
-  micButton.addEventListener('click', () => isRecording ? stopSpeechRecognition() : startSpeechRecognition());
-  speechSelectionBtn.addEventListener('click', () => {
-    speechSelectionToggledOn = !speechSelectionToggledOn;
-    if (speechSelectionToggledOn) startSpeechSelectionMode(); else stopSpeechSelectionMode();
-  });
-  helpIcon.addEventListener('mouseenter', () => showHelp(true));
-  helpIcon.addEventListener('mouseleave', () => showHelp(false));
-
-  container.addEventListener('keydown', (e) => {
-    const modifierCodes = ['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight'];
-    if (modifierCodes.includes(e.code)) return;
-    if (e.altKey && e.key.toLowerCase() === 'i') { e.preventDefault(); showHelp(true); return; }
-
-    const shortcutString = parseShortcut(e);
-    const action = model.get('shortcuts')[shortcutString];
-    if (action === 'speech_selection') {
-      e.preventDefault();
-      if (speechSelectionToggledOn) { speechSelectionToggledOn = false; stopSpeechSelectionMode(); }
-      else if (!isSpeechSelectionMode) { speechSelectionHotkeyDown = true; startSpeechSelectionMode(); }
-    } else if (action) { e.preventDefault(); handleAction(action); }
-  });
-
-  container.addEventListener('keyup', (e) => {
-    if (e.key.toLowerCase() === 'i') { e.preventDefault(); showHelp(false); return; }
-    const shortcutString = parseShortcut(e);
-    if (model.get('shortcuts')[shortcutString] === 'speech_selection' && speechSelectionHotkeyDown) {
-      e.preventDefault();
-      speechSelectionHotkeyDown = false;
-      stopSpeechSelectionMode();
-    }
-  });
-
-  model.on('change:current_index', updateDisplay);
-  model.on('change:examples', updateDisplay);
-  model.on('change:notes', updateDisplay);
-  model.on('change:shortcuts', createShortcutOverlays);
-  model.on('change:gamepad_shortcuts', createShortcutOverlays);
-
-  window.addEventListener('gamepadconnected', (e) => {
-    gamepadConnected = true; gamepadIndex = e.gamepad.index; gamepadIndicator.style.display = 'inline';
-  });
-  window.addEventListener('gamepaddisconnected', (e) => {
-    gamepadConnected = false; gamepadIndex = -1; gamepadIndicator.style.display = 'none';
-  });
-
-  // --- 5. Initialization ---
-  initSpeechRecognition();
-  updateDisplay();
-  createShortcutOverlays();
   pollGamepad();
 
   const existingGamepads = navigator.getGamepads();
