@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.14.6"
+__generated_with = "0.14.9"
 app = marimo.App()
 
 
@@ -10,9 +10,9 @@ def _(mo):
         r"""
     ## Enter `molabel`
 
-    `molabel` is an [anywidget](https://anywidget.dev/) library that contains widgets to help you do evals by letting you annotate data from a Python notebook. It even comes with ergonomic benefits like gamepad-support. 
+    `molabel` is an [anywidget](https://anywidget.dev/) library that contains widgets to help you do evals by letting you annotate data from a Python notebook. It even comes with ergonomic benefits like gamepad-support.
 
-    The primary target for this library is [marimo](https://marimo.io/), but it should also work in Jupyter, colab and VSCode. 
+    The primary target for this library is [marimo](https://marimo.io/), but it should also work in Jupyter, colab and VSCode.
 
     ### Install
 
@@ -24,14 +24,14 @@ def _(mo):
 
     ### Usage
 
-    The most basic annotation task out there is binary "yes"/"no" annotation. It might be basic, but it also covers *a lot* of ground. 
+    The most basic annotation task out there is binary "yes"/"no" annotation. It might be basic, but it also covers *a lot* of ground.
 
     - there's binary classification
     - there's the "is this a match?" kinds of queries for retreival
     - there's comparisons between two choices, one of which is better
     - if you add a textbox you can add as much context as you see fit for later use
 
-    That's why, as a simple place to get started, this library provides the `SimpleLabel` widget. You can assign a "yes", "no" or "skip" label to an example and you can also attach a note to serve as context. There's also a "previous" button for when you want to undo something you did before. 
+    That's why, as a simple place to get started, this library provides the `SimpleLabel` widget. You can assign a "yes", "no" or "skip" label to an example and you can also attach a note to serve as context. There's also a "previous" button for when you want to undo something you did before.
 
     ```python
     from molabel import SimpleLabel
@@ -40,7 +40,7 @@ def _(mo):
     widget
     ```
 
-    In this snippet, the list of examples is a Python list of "stuff you want to annotate". This "stuff" needs to render in the front-end and you can customise how by passing a render function. Inside of this function you can use [jinja2](https://jinja.palletsprojects.com/en/stable/), [mohtml](https://github.com/koaning/mohtml) or [FastHTML](https://www.fastht.ml/) as you see fit. The only assumption is that you return something that can render statically in the frontend. 
+    In this snippet, the list of examples is a Python list of "stuff you want to annotate". This "stuff" needs to render in the front-end and you can customise how by passing a render function. Inside of this function you can use [jinja2](https://jinja.palletsprojects.com/en/stable/), [mohtml](https://github.com/koaning/mohtml) or [FastHTML](https://www.fastht.ml/) as you see fit. The only assumption is that you return something that can render statically in the frontend.
 
     ### Demo
 
@@ -88,12 +88,12 @@ def _(mo):
         r"""
     ## More details
 
-    One of the key features of this library is ergonomics. You can use keyboard shortcuts to help you annotate *or* pick up a bluetooth gamepad. You can even use your voice to add notes to your annotations. To configure these shortcuts you can pass keyword arguments. These are the defaults: 
+    One of the key features of this library is ergonomics. You can use keyboard shortcuts to help you annotate *or* pick up a bluetooth gamepad. You can even use your voice to add notes to your annotations. To configure these shortcuts you can pass keyword arguments. These are the defaults:
 
     ```python
     default_shortcuts = {
         "Alt+1": "prev",
-        "Alt+2": "yes", 
+        "Alt+2": "yes",
         "Alt+3": "no",
         "Alt+4": "skip",
         "Alt+5": "focus_notes",
@@ -102,7 +102,7 @@ def _(mo):
 
     default_gamepad_shortcuts = {
         "button_0": "yes",     # Often A button
-        "button_1": "no",      # Often B button  
+        "button_1": "no",      # Often B button
         "button_2": "skip",    # Often X button
         "button_3": "prev",    # Often Y button
         "button_4": "speech_notes",  # Often left bumper
@@ -124,10 +124,8 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    from mohtml import p, tailwind_css, div, br, pre, code
-    from mohtml.components import terminal
-    import jinja2
     import pandas as pd
+    from mohtml import div, p, tailwind_css
 
     tailwind_css()
     return div, p, pd
